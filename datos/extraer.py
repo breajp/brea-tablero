@@ -11,7 +11,7 @@ from datetime import date, datetime
 import openpyxl
 from openpyxl.utils import column_index_from_string as col
 
-HOY = date(2026, 10, 21)
+HOY = date.today()
 ESTADOS = {
     "A": ("activa", "Activa"),
     "B": ("reservada", "Reservada"),
@@ -32,7 +32,19 @@ NOMBRES = {
     "mariana": "Mariana", "tomas": "Tomás", "emily": "Emily", "agustina": "Agustina",
 }
 DINERO = ["AB", "AC", "AD", "AE", "AF", "AG", "AH", "AI", "AJ"]
-HOJAS_COPIA = ["OFICINA", "Gonza", "Flor", "Ceci", "Marian", "Nati", "Juana", "Emily", "Tomas"]
+NO_SON_COPIAS = {"2026", "COMISIONES", "Hoja 6"}
+# Las columnas se buscan por su encabezado (fila 2): en octubre de 2026 Agente y Productor
+# cambiaron de lugar, y leer por letra cruzaba los roles sin dar ningún error.
+ENCABEZADOS = {
+    "estado": "Estado", "propiedad": "Propiedad", "productor": "Productor", "agente": "Agente",
+    "lider": "Lider", "operacion": "Operación", "tipologia": "Tipología",
+    "vendedor": "Acuerdo Vendedor", "comprador": "Acuerdo comprador", "interno": "Acuerdo Interno (Agente)",
+    "data": "Data", "ingreso": "Fecha Ingreso", "reserva": "Fecha Reserva o baja", "conformacion": "Fecha Conformación",
+    "impacto": "Mes Impacto", "publi": "$ Publi", "cierre": "$ Cierrre", "nego": "% NEGO", "escritura": "$ Escritura",
+    "bruto": "Bruto General", "bruto_productor": "Bruto Productor", "bruto_agente": "Bruto Agente",
+    "productor_neto": "$ Productor", "agente_neto": "$ Agente", "oficina": "OFICINA", "lider_neto": "$ Lider",
+    "gerencia": "Gerencia", "brea": "Brea", "firma": "Fecha y Hora",
+}
 
 
 def persona(v):
@@ -63,23 +75,28 @@ def main(ruta, salida):
     wb = openpyxl.load_workbook(ruta, data_only=True)
     wf = openpyxl.load_workbook(ruta)
     ws, fs = wb["2026"], wf["2026"]
-    c = lambda r, k: ws.cell(r, col(k)).value
+    letras = {str(ws.cell(2, i).value).strip(): openpyxl.utils.get_column_letter(i) for i in range(1, ws.max_column + 1) if ws.cell(2, i).value}
+    faltan = [h for h in ENCABEZADOS.values() if h not in letras]
+    if faltan:
+        raise SystemExit(f"La hoja 2026 no tiene estas columnas: {faltan}")
+    L = {k: letras[h] for k, h in ENCABEZADOS.items()}
+    c = lambda r, k: ws.cell(r, col(L.get(k, k))).value
 
     tasas = {persona(f.value): f.offset(0, 1).value for f in wb["COMISIONES"]["A"] if persona(f.value)}
 
     operaciones, participaciones, revisar = [], [], []
     grupos = {}
     for r in range(3, ws.max_row + 1):
-        prop = c(r, "B")
-        estado = str(c(r, "A") or "")[:1]
+        prop = c(r, "propiedad")
+        estado = str(c(r, "estado") or "")[:1]
         if not prop or estado not in ESTADOS:
             continue
         estado_id, _ = ESTADOS[estado]
-        listado, reserva = dia(c(r, "P")), dia(c(r, "Q"))
-        publi, cierre = num(c(r, "V")), num(c(r, "W"))
-        nego = num(c(r, "X"))
-        cobro = mes(c(r, "U")) or mes(c(r, "R")) or mes(c(r, "Q"))
-        nota = str(c(r, "O")).strip() if c(r, "O") else None
+        listado, reserva = dia(c(r, "ingreso")), dia(c(r, "reserva"))
+        publi, cierre = num(c(r, "publi")), num(c(r, "cierre"))
+        nego = num(c(r, "nego"))
+        cobro = mes(c(r, "impacto")) or mes(c(r, "conformacion")) or mes(c(r, "reserva"))
+        nota = str(c(r, "data")).strip() if c(r, "data") else None
 
         dias = None
         if listado:
@@ -93,17 +110,17 @@ def main(ruta, salida):
 
         op = {
             "row": r, "deal": trato, "property": prop.strip(), "status": estado_id,
-            "producer": persona(c(r, "C")), "producerLabel": c(r, "C"),
-            "agent": persona(c(r, "D")), "leader": persona(c(r, "E")),
-            "kind": c(r, "F"), "typology": c(r, "G"),
-            "sellerFee": pct(c(r, "L")), "buyerFee": pct(c(r, "M")), "internalSplit": pct(c(r, "N")),
-            "notes": nota, "listedAt": listado, "reservedAt": reserva, "signedAt": dia(c(r, "AP")),
-            "billingMonth": cobro, "listPrice": publi, "closePrice": cierre, "deedPrice": num(c(r, "Y")),
+            "producer": persona(c(r, "productor")), "producerLabel": c(r, "productor"),
+            "agent": persona(c(r, "agente")), "leader": persona(c(r, "lider")),
+            "kind": c(r, "operacion"), "typology": c(r, "tipologia"),
+            "sellerFee": pct(c(r, "vendedor")), "buyerFee": pct(c(r, "comprador")), "internalSplit": pct(c(r, "interno")),
+            "notes": nota, "listedAt": listado, "reservedAt": reserva, "signedAt": dia(c(r, "firma")),
+            "billingMonth": cobro, "listPrice": publi, "closePrice": cierre, "deedPrice": num(c(r, "escritura")),
             "negotiationPct": nego, "daysListed": dias,
-            "gross": num(c(r, "AB")), "producerGross": num(c(r, "AC")), "agentGross": num(c(r, "AD")),
-            "producerNet": num(c(r, "AE")), "agentNet": num(c(r, "AF")), "office": num(c(r, "AG")),
-            "leaderNet": num(c(r, "AH")), "management": num(c(r, "AI")), "brea": num(c(r, "AJ")),
-            "potential": round(publi * c(r, "L"), 2) if publi and isinstance(c(r, "L"), (int, float)) and c(r, "L") > 0 else None,
+            "gross": num(c(r, "bruto")), "producerGross": num(c(r, "bruto_productor")), "agentGross": num(c(r, "bruto_agente")),
+            "producerNet": num(c(r, "productor_neto")), "agentNet": num(c(r, "agente_neto")), "office": num(c(r, "oficina")),
+            "leaderNet": num(c(r, "lider_neto")), "management": num(c(r, "gerencia")), "brea": num(c(r, "brea")),
+            "potential": round(publi * c(r, "vendedor"), 2) if publi and isinstance(c(r, "vendedor"), (int, float)) and c(r, "vendedor") > 0 else None,
         }
         operaciones.append(op)
 
@@ -123,6 +140,9 @@ def main(ruta, salida):
         if not listado:
             revisar.append({"kind": "fecha", "row": r, "property": prop,
                             "detail": "Sin fecha de ingreso: la columna de días publicada da 46.292."})
+        if estado in "DEF" and not (cierre and cobro):
+            revisar.append({"kind": "fecha", "row": r, "property": prop,
+                            "detail": f"Figura como {ESTADOS[estado][1].lower()} pero no tiene precio de cierre ni fechas: no suma en ningún mes."})
         if nego is not None and abs(nego) > 50:
             revisar.append({"kind": "moneda", "row": r, "property": prop,
                             "detail": f"Publicada a {publi:,.0f} y cerrada a {cierre:,.0f}: parece mezclar pesos y dólares. La negociación da {nego:.1f} %."})
@@ -145,7 +165,7 @@ def main(ruta, salida):
                                     "detail": f"La columna {ws.cell(2, col(k)).value} usa {p.replace('#', str(r))} en vez de la fórmula del resto."})
 
     # Las copias por agente contra la maestra: misma operación, montos distintos.
-    for hoja in HOJAS_COPIA:
+    for hoja in [n for n in wb.sheetnames if n not in NO_SON_COPIAS]:
         h = wb[hoja]
         for r in range(3, h.max_row + 1):
             cierre = num(h.cell(r, col("W")).value)

@@ -12,22 +12,24 @@ describe.runIf(existsSync(ruta))("con la planilla real", () => {
   const t: Tablero = existsSync(ruta) ? JSON.parse(readFileSync(ruta, "utf8")) : ({} as Tablero);
   const anio = { granularidad: "anio" as const, anio: 2026, indice: 1 };
 
-  it("cierra con el bruto y el neto de la hoja OFICINA", () => {
+  // Sheet al 22/10/2026. El neto coincide con la hoja OFICINA; el bruto tiene US$ 3.600 más
+  // porque OFICINA no copió Calle 29 1481 Claromecó, que en la maestra ya está vendida.
+  it("cierra con el neto de la hoja OFICINA", () => {
     const r = resumen(t, anio);
-    expect(Math.round(r.bruto)).toBe(182669);
-    expect(Math.round(r.brea)).toBe(54187);
-    expect(Math.round(r.productores + r.agentes + r.lideres + r.gerencia + r.brea)).toBe(182669);
+    expect(Math.round(r.bruto)).toBe(205494);
+    expect(Math.round(r.brea)).toBe(57607);
+    expect(Math.round(r.productores + r.agentes + r.lideres + r.gerencia + r.brea)).toBe(205494);
   });
 
   it("cuenta una sola vez cada operación en bolsa", () => {
-    // 30 filas cerradas, 2 son la otra mitad de una bolsa y Calle 29 al 1000 se cerró en 2025.
+    // Las bolsas cuentan una vez; Calle 29 al 1000 se cerró en 2025 y 1810 191 no tiene fecha.
     const r = resumen(t, anio);
-    expect(r.operaciones).toBe(27);
+    expect(r.operaciones).toBe(31);
   });
 
   it("suma la producción de Flor en sus tres roles", () => {
     const p = produccion(t.shares, "flor", anio);
-    expect(Math.round(p.netoCerrado)).toBe(50251);
+    expect(Math.round(p.netoCerrado)).toBe(60218);
   });
 
   it("arma cortes de semana y quincena sin huecos", () => {

@@ -6,7 +6,7 @@ Es un sitio estático. No tiene servidor ni base de datos: se publica en GitHub 
 
 ## Cómo funciona el acceso
 
-1. `datos/extraer.py` lee la planilla (`.xlsx`, hoja **2026**) y deja `datos/tablero.json`.
+1. `datos/extraer.py` lee la planilla (`datos/planilla.xlsx`, hoja **2026**) y deja `datos/tablero.json`. Busca cada columna por su encabezado, así que reordenar columnas no lo rompe; renombrar un encabezado sí, y avisa cuál falta.
 2. `scripts/cifrar.mjs` arma un paquete por usuario con lo que esa persona puede ver y lo cifra con su contraseña (AES-256-GCM, clave derivada con PBKDF2). El admin ve todo. Cada agente ve solo sus operaciones y su parte, sin los montos de los demás ni los de Brea.
 3. La página publicada lleva solo `apps/web/src/datos/paquetes.json`, que está cifrado. Sin la contraseña no se puede leer, aunque el repo sea público.
 
@@ -15,7 +15,7 @@ Es un sitio estático. No tiene servidor ni base de datos: se publica en GitHub 
 ## Actualizar los datos
 
 ```bash
-# Con la planilla exportada como .xlsx junto a esta carpeta
+# En el Sheet: Archivo → Descargar → Microsoft Excel, guardado como datos/planilla.xlsx
 pip install openpyxl
 npm run datos        # extrae y vuelve a cifrar
 git add apps/web/src/datos/paquetes.json && git commit -m "Datos al <fecha>" && git push
