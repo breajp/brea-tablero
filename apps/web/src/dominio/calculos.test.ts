@@ -8,7 +8,8 @@ const ruta = resolve(__dirname, "../../../../datos/tablero.json");
 
 // Los totales de la hoja OFICINA de la planilla: si el tablero no da esto, algo se rompió.
 describe.runIf(existsSync(ruta))("con la planilla real", () => {
-  const t: Tablero = JSON.parse(readFileSync(ruta, "utf8"));
+  // Sin la planilla (en el CI no está: es privada) el describe se salta, pero su cuerpo igual corre.
+  const t: Tablero = existsSync(ruta) ? JSON.parse(readFileSync(ruta, "utf8")) : ({} as Tablero);
   const anio = { granularidad: "anio" as const, anio: 2026, indice: 1 };
 
   it("cierra con el bruto y el neto de la hoja OFICINA", () => {
