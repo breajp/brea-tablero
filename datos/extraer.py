@@ -57,6 +57,16 @@ def num(v):
     return round(float(v), 2) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
 
+def plata(x):
+    return f"{x:,.0f}".replace(",", ".")
+
+
+def formula_legible(patron, fila):
+    # La planilla está en es_ES: una fórmula se lee con ";". Un valor escrito a mano (188,99) queda como está.
+    texto = patron.replace("#", str(fila))
+    return texto.replace(",", ";") if texto.startswith("=") else texto
+
+
 def pct(v):
     # Los honorarios son fracciones chicas (0,015, 0,0415): redondear a centavos los rompe.
     return round(float(v), 6) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
@@ -140,12 +150,12 @@ def main(ruta, salida):
         if not listado:
             revisar.append({"kind": "fecha", "row": r, "property": prop,
                             "detail": "Sin fecha de ingreso: la columna de días publicada da 46.292."})
-        if estado in "DEF" and not (cierre and cobro):
+        if estado in "DEF" and not cobro:
             revisar.append({"kind": "fecha", "row": r, "property": prop,
-                            "detail": f"Figura como {ESTADOS[estado][1].lower()} pero no tiene precio de cierre ni fechas: no suma en ningún mes."})
+                            "detail": f"Figura como {ESTADOS[estado][1].lower()} pero no tiene fechas ni Mes Impacto: no suma en ningún mes."})
         if nego is not None and abs(nego) > 50:
             revisar.append({"kind": "moneda", "row": r, "property": prop,
-                            "detail": f"Publicada a {publi:,.0f} y cerrada a {cierre:,.0f}: parece mezclar pesos y dólares. La negociación da {nego:.1f} %."})
+                            "detail": f"Publicada a {plata(publi)} y cerrada a {plata(cierre)}: parece mezclar pesos y dólares. La negociación da {nego:.1f} %.".replace(f"{nego:.1f}", f"{nego:.1f}".replace(".", ","))})
 
     # Fórmulas pisadas a mano en la maestra: la que usa la mayoría de la columna es la regla, el resto se desvía.
     for k in ["Z", "AA"] + DINERO:
@@ -162,7 +172,7 @@ def main(ruta, salida):
                     continue
                 for r in filas:
                     revisar.append({"kind": "formula", "row": r, "property": fs.cell(r, 2).value, "column": k,
-                                    "detail": f"La columna {ws.cell(2, col(k)).value} usa {p.replace('#', str(r))} en vez de la fórmula del resto."})
+                                    "detail": f"La columna {ws.cell(2, col(k)).value} usa {formula_legible(p, r)} en vez de la fórmula del resto."})
 
     # Las copias por agente contra la maestra: misma operación, montos distintos.
     for hoja in [n for n in wb.sheetnames if n not in NO_SON_COPIAS]:
@@ -181,7 +191,7 @@ def main(ruta, salida):
             o = min(candidatas, key=lambda o: len(diferencias(o)))
             for k, copia, maestra in diferencias(o):
                 revisar.append({"kind": "copia", "row": o["row"], "property": o["property"], "sheet": hoja,
-                                "detail": f"{ws.cell(2, col(k)).value}: {copia:,.0f} en la hoja {hoja} y {maestra:,.0f} en la maestra."})
+                                "detail": f"{ws.cell(2, col(k)).value}: {plata(copia)} en la hoja {hoja} y {plata(maestra)} en la maestra."})
 
     personas = [{"id": p, "name": NOMBRES[p], "rate": tasas.get(p)} for p in NOMBRES]
     json.dump({
