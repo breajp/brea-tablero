@@ -1,0 +1,34 @@
+{
+  "name": "brea-tablero",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Producción, comisiones y propiedades de Brea Propiedades.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @brea-tablero/web",
+    "datos": "python3 datos/extraer.py \"../2026 Operaciones Brea Propiedades.xlsx\" datos/tablero.json && node scripts/cifrar.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "un-archivo": "npm run build && node scripts/un-archivo.mjs apps/web/dist brea-tablero.html",
+    "format": "prettier --write .",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.11.0",
+    "eslint-plugin-better-tailwindcss": "4.7.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.12.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1"
+  }
+}

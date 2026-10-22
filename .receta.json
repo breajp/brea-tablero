@@ -1,0 +1,40 @@
+{
+  "nombre": "Brea Tablero",
+  "slug": "brea-tablero",
+  "descripcion": "Producción, comisiones y propiedades de Brea Propiedades.",
+  "perspectiva": "serverless",
+  "superficies": {
+    "app": true,
+    "landing": false
+  },
+  "voz": "vos",
+  "deploy": "liviano",
+  "dominio": "brea-tablero.example.com",
+  "usuarios": {
+    "staff": false,
+    "externos": false
+  },
+  "modulos": {
+    "colas": false,
+    "archivos": false,
+    "ia": false
+  },
+  "clientes": false,
+  "backend": false,
+  "rolStaff": "ADMIN",
+  "generador": {
+    "repo": "abn-digital/product-design-system",
+    "version": "03ca279"
+  },
+  "origen": {
+    "repo": "abn-digital/creativos",
+    "commit": "986cb42",
+    "fecha": "2026-09-25"
+  },
+  "activos": [
+    "app",
+    "deploy",
+    "vos",
+    "web"
+  ]
+}

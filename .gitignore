@@ -1,0 +1,21 @@
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Los secretos nunca viven en archivos: salen de Secret Manager con varlock.
+.env
+.env.*
+!.env.schema
+# Los esquemas de cada módulo: como .env.schema, sin un solo valor secreto.
+!env/.env.*
+*-service-account.json
+
+/tmp/
+*.log
+.DS_Store
+
+# Datos reales y contraseñas: nunca al repo. Al repo va solo apps/web/src/datos/paquetes.json, cifrado.
+datos/*
+!datos/extraer.py
+brea-tablero.html

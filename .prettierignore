@@ -1,0 +1,7 @@
+dist/
+dist-ssr/
+node_modules/
+package-lock.json
+# Van a abn-cloud, que tiene su propio formato. Y prettier convierte los
+# __PLACEHOLDERS__ de Markdown en negrita.
+despliegue/abn-cloud/
