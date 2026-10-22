@@ -16,28 +16,28 @@ export default function AgentesPage() {
     () =>
       data.people
         .map((p) => ({ ...p, ...produccion(data.shares, p.id, periodo) }))
-        .sort((a, b) => b.netoCerrado - a.netoCerrado || b.netoEnCurso - a.netoEnCurso),
+        .sort((a, b) => b.brutoCerrado - a.brutoCerrado || b.brutoEnCurso - a.brutoEnCurso),
     [data, periodo],
   );
-  const total = filas.reduce((a, f) => a + f.netoCerrado, 0);
+  const total = filas.reduce((a, f) => a + f.brutoCerrado, 0);
 
   return (
     <>
       <PageHeader
         eyebrow="Equipo"
         title="Agentes"
-        lede="Cada persona suma lo que cobró como productor, agente y líder. Entrá a una para ver su tablero tal como lo ve ella."
+        lede="La producción de cada persona es el bruto que generó como productor, agente y líder. Entrá a una para ver su tablero tal como lo ve ella."
         actions={<SelectorDePeriodo />}
         wide
       />
-      <Seccion titulo={`Producción en ${nombre(periodo)}`} bajada={`${usd(total)} netos para el equipo.`}>
+      <Seccion titulo={`Producción en ${nombre(periodo)}`} bajada={`${usd(total)} de producción bruta del equipo.`}>
         <div className="overflow-x-auto rounded-panel bg-paper-raised shadow-card">
           <table className="w-full min-w-[820px] text-left">
             <thead>
               <tr className="text-meta text-ink-3">
                 <th className="px-5 py-3 font-medium">Persona</th>
+                <th className="px-3 py-3 text-right font-medium">Producción bruta</th>
                 <th className="px-3 py-3 text-right font-medium">Neto cobrado</th>
-                <th className="px-3 py-3 text-right font-medium">Bruto generado</th>
                 <th className="px-3 py-3 text-right font-medium">Como productor</th>
                 <th className="px-3 py-3 text-right font-medium">Como agente</th>
                 <th className="px-3 py-3 text-right font-medium">Como líder</th>
@@ -60,12 +60,12 @@ export default function AgentesPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-right font-medium text-ink">{usd(f.netoCerrado)}</td>
-                  <td className="px-3 py-3 text-right">{usd(f.brutoCerrado)}</td>
+                  <td className="px-3 py-3 text-right font-medium text-ink">{usd(f.brutoCerrado)}</td>
+                  <td className="px-3 py-3 text-right">{usd(f.netoCerrado)}</td>
                   <td className="px-3 py-3 text-right">{f.porRol.productor ? usd(f.porRol.productor) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.porRol.agente ? usd(f.porRol.agente) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.porRol.lider ? usd(f.porRol.lider) : "—"}</td>
-                  <td className="px-3 py-3 text-right">{f.netoEnCurso ? usd(f.netoEnCurso) : "—"}</td>
+                  <td className="px-3 py-3 text-right">{f.brutoEnCurso ? usd(f.brutoEnCurso) : "—"}</td>
                   <td className="px-3 py-3 text-right">{numero(f.operaciones)}</td>
                   <td className="pr-4 text-ink-4 group-hover:text-ink">
                     <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -76,7 +76,7 @@ export default function AgentesPage() {
           </table>
         </div>
         <p className="mt-3 max-w-[80ch] text-meta text-ink-3">
-          Gonza figura con poco porque lo que entra como Gonza CABA tiene 0 % de productor: esa parte queda para la oficina y se ve en Brea y Gerencia.
+          Lo de Gonza 3A es Tres Arroyos, una unidad aparte sin gerencia. Gonza CABA tiene 0 % de productor: su neto queda en la oficina.
         </p>
       </Seccion>
       <div className="h-16" />

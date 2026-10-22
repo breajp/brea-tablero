@@ -32,7 +32,7 @@ export function Indicador({
             contra {contraQue}
           </>
         ) : previo !== undefined && contraQue ? (
-          <>{previo === null ? `Sin histórico de ${contraQue} todavía` : `Sin datos para ${contraQue}`}</>
+          <>{previo === null ? `Sin histórico para comparar con ${contraQue}` : `Sin datos para ${contraQue}`}</>
         ) : null}
         {detalle && (v !== null || previo !== undefined) && " · "}
         {detalle}

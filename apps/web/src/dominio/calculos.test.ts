@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { movimiento, produccion, resumen } from "./calculos";
+import { deBuenosAires, movimiento, produccion, resumen } from "./calculos";
 import type { Tablero } from "./tipos";
 
 const ruta = resolve(__dirname, "../../../../datos/tablero.json");
@@ -19,6 +19,14 @@ describe.runIf(existsSync(ruta))("con la planilla real", () => {
     expect(Math.round(r.bruto)).toBe(205494);
     expect(Math.round(r.brea)).toBe(57607);
     expect(Math.round(r.productores + r.agentes + r.lideres + r.gerencia + r.brea)).toBe(205494);
+  });
+
+  // Tres Arroyos va aparte (Gonzalo, 22/10). OFICINA igual incluye Berutti 621 (US$ 723, de Tres
+  // Arroyos), por eso el bruto da 723 menos que el de esa hoja; el neto de Brea no cambia.
+  it("sin Tres Arroyos, el neto cierra con la hoja OFICINA", () => {
+    const r = resumen(deBuenosAires(t), anio);
+    expect(Math.round(r.bruto)).toBe(201171);
+    expect(Math.round(r.brea)).toBe(57607);
   });
 
   it("cuenta una sola vez cada operación en bolsa", () => {

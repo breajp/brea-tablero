@@ -46,16 +46,22 @@ npm run test         # incluye los totales de la planilla, si datos/tablero.json
 npm run un-archivo   # el sitio en un solo HTML (para mostrarlo como artifact)
 ```
 
-## Reglas de negocio (hoy)
+## Reglas de negocio
 
-Salen de las fórmulas de la planilla y conviene confirmarlas con Gonzalo antes de cambiarlas:
+Confirmadas con Gonzalo el 22/10/2026:
 
 - Bruto general = precio de cierre × (honorario vendedor + honorario comprador).
 - Bruto productor = bruto × (1 − acuerdo interno); el resto es del agente.
-- $ productor = bruto productor × su % (pestaña COMISIONES). Gonza CABA tiene 0 %: esa parte queda en la oficina.
-- Líder = 15 % del bruto productor. Gerencia = 45 % de (oficina − líder), salvo cuando participa Cecilia.
+- $ productor = bruto productor × su % (pestaña COMISIONES). El % cambia por categoría: quien llega a cierta facturación anual pasa a cobrar otro %.
+- Líder = 15 % del bruto productor. Gerencia = 45 % de (oficina − líder), salvo cuando la producción es de Cecilia, que es la gerente.
 - Brea = oficina − líder − gerencia.
-- Lo cerrado cuenta en el **mes de cobro** (columna Mes impacto). Una operación en bolsa ocupa dos filas: para contar operaciones y volumen va una sola vez.
+- **La producción de un agente es el bruto** que generó como productor, agente y líder. El neto se muestra aparte.
+- Lo cerrado cuenta en el **mes de cobro** (Mes impacto): hasta que no se firma no se imputa nada.
+- **Todo en dólares.** Un alquiler en pesos se pasa al cambio del día de firma del contrato.
+- **Tres Arroyos (Gonza 3A) es una unidad aparte**, de Gonza y sin gerencia: no entra en los números de la inmobiliaria.
+- **Ya no hay bolsas**: una operación compartida se cobra como colega. Las dos bolsas de 2026 quedan como historia.
+
+Roles: Cecilia es gerente y Juana lleva la administración (carga la planilla); las dos además trabajan como agentes. En el tablero, Gonzalo y Cecilia son admin.
 
 El tablero muestra los montos como están en la planilla: no recalcula las fórmulas. La pantalla **Revisar** lista dónde la planilla se aparta de estas reglas.
 

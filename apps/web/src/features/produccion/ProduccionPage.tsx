@@ -29,10 +29,11 @@ export default function ProduccionPage() {
   const conHistorico = hayHistorico(data, anterior(periodo));
 
   const operaciones = useMemo(() => {
-    const porTrato = new Map<string, { deal: string; roles: Role[]; net: number; stage: string; month: string | null; row: number }>();
+    const porTrato = new Map<string, { deal: string; roles: Role[]; gross: number; net: number; stage: string; month: string | null; row: number }>();
     for (const s of data.shares.filter((s) => s.person === persona)) {
-      const o = porTrato.get(s.deal + s.row) ?? { deal: s.deal, roles: [], net: 0, stage: s.stage, month: s.month, row: s.row };
+      const o = porTrato.get(s.deal + s.row) ?? { deal: s.deal, roles: [], gross: 0, net: 0, stage: s.stage, month: s.month, row: s.row };
       o.roles.push(s.role);
+      o.gross += s.gross;
       o.net += s.net;
       porTrato.set(s.deal + s.row, o);
     }
@@ -63,28 +64,28 @@ export default function ProduccionPage() {
         className={esAdmin && id ? "pt-5 md:pt-6" : undefined}
         eyebrow={propia ? `Hola, ${quien.name}` : "Producción individual"}
         title={propia ? "Tu producción" : quien.name}
-        lede={`Lo que ${propia ? "cobraste" : "cobró"} como productor, agente y líder. Cuenta en el mes de cobro.`}
+        lede={`La producción es el bruto que ${propia ? "generaste" : "generó"} como productor, agente y líder, en el mes de cobro. Abajo, lo que ${propia ? "cobraste" : "cobró"} en mano.`}
         actions={<SelectorDePeriodo />}
         wide
       />
 
       <section className="px-5 pt-10 md:px-10 md:pt-12">
         <div className="mx-auto grid max-w-[1320px] gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Indicador etiqueta="Neto cobrado" valor={usd(p.netoCerrado)} actual={p.netoCerrado} previo={conHistorico ? previo.netoCerrado : null} contraQue={contra} />
-          <Indicador etiqueta="Bruto generado" valor={usd(p.brutoCerrado)} actual={p.brutoCerrado} previo={conHistorico ? previo.brutoCerrado : null} contraQue={contra} detalle="antes del reparto con la oficina" />
-          <Indicador etiqueta="En curso" valor={usd(p.netoEnCurso)} detalle="reservadas y a la firma, todavía sin cobrar" />
-          <Indicador etiqueta={`Acumulado ${periodo.anio}`} valor={usd(anual.netoCerrado)} detalle={`${numero(anual.operaciones)} operaciones en el año`} />
+          <Indicador etiqueta="Producción bruta" valor={usd(p.brutoCerrado)} actual={p.brutoCerrado} previo={conHistorico ? previo.brutoCerrado : null} contraQue={contra} />
+          <Indicador etiqueta="Neto cobrado" valor={usd(p.netoCerrado)} actual={p.netoCerrado} previo={conHistorico ? previo.netoCerrado : null} contraQue={contra} detalle="lo que queda después del reparto" />
+          <Indicador etiqueta="En curso" valor={usd(p.brutoEnCurso)} detalle={`bruto reservado y a la firma · ${usd(p.netoEnCurso)} netos`} />
+          <Indicador etiqueta={`Acumulado ${periodo.anio}`} valor={usd(anual.brutoCerrado)} detalle={`${usd(anual.netoCerrado)} netos · ${numero(anual.operaciones)} operaciones`} />
         </div>
       </section>
 
       <div className="mx-auto grid max-w-[1320px] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <Seccion titulo={`Neto por mes · ${periodo.anio}`} className="lg:pr-5">
-          <BarrasPorMes meses={participacionesPorMes(data.shares.filter((s) => s.person === persona), periodo.anio)} enPeriodo={(m) => contieneMes(periodo, m)} etiqueta="Neto" />
+        <Seccion titulo={`Producción bruta por mes · ${periodo.anio}`} className="lg:pr-5">
+          <BarrasPorMes meses={participacionesPorMes(data.shares.filter((s) => s.person === persona), periodo.anio)} enPeriodo={(m) => contieneMes(periodo, m)} etiqueta="Producción bruta" />
         </Seccion>
         <Seccion titulo="Por rol" bajada={`En ${nombre(periodo)}.`} className="lg:pl-5">
           <div className="rounded-panel bg-paper-raised p-2 shadow-card">
             <Reparto
-              total={p.netoCerrado}
+              total={p.brutoCerrado}
               porciones={(["productor", "agente", "lider"] as Role[]).map((rol) => ({
                 clave: rol,
                 etiqueta: `Como ${ROL[rol].toLowerCase()}`,
@@ -95,7 +96,7 @@ export default function ProduccionPage() {
         </Seccion>
       </div>
 
-      <Seccion titulo="Operaciones" bajada="Todas las del año en las que participó, con lo que le corresponde.">
+      <Seccion titulo="Operaciones" bajada="Todas las del año en las que participó: el bruto que generó y, abajo, lo que cobra.">
         {operaciones.length === 0 ? (
           <EstadoVacio icon={Eye} titulo="Ninguna operación todavía" bajada="Cuando se reserve o se cierre una operación con esta persona, aparece acá." />
         ) : (
@@ -118,7 +119,10 @@ export default function ProduccionPage() {
                 <div className="text-meta md:text-right">
                   <Chip tone={ESTADO[o.d.status].tone}>{ESTADO[o.d.status].label}</Chip>
                 </div>
-                <div className="text-right text-base font-medium text-ink tnum">{usd(o.net)}</div>
+                <div className="text-right">
+                  <div className="text-base font-medium text-ink tnum">{usd(o.gross)}</div>
+                  <div className="text-meta text-ink-4 tnum">{usd(o.net)} neto</div>
+                </div>
               </li>
             ))}
           </ul>

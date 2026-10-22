@@ -5,6 +5,15 @@ const suma = (xs: (number | null | undefined)[]) => xs.reduce<number>((a, x) => 
 
 export const esVolumen = (d: Deal) => d.kind === "Venta" || d.kind === "Compra";
 
+// Tres Arroyos es una unidad aparte de Gonza, sin gerencia: no entra en los números de la
+// inmobiliaria de Buenos Aires (la hoja OFICINA tampoco la tiene). Solo el admin trae producerLabel.
+export const esTresArroyos = (d: Deal) => d.producerLabel === "Gonza 3A";
+
+export function deBuenosAires(t: Tablero): Tablero {
+  const aparte = new Set(t.deals.filter(esTresArroyos).map((d) => d.row));
+  return { ...t, deals: t.deals.filter((d) => !aparte.has(d.row)), shares: t.shares.filter((s) => !aparte.has(s.row)) };
+}
+
 // Una operación en bolsa son dos filas con el mismo `deal`: para contar y para el volumen va una.
 function unicas(deals: Deal[]): Deal[] {
   const vistas = new Set<string>();
@@ -86,11 +95,11 @@ export function porMes(t: Tablero, anio: number, valor: (d: Deal) => number | nu
   }));
 }
 
-export function participacionesPorMes(shares: Share[], anio: number): Mes[] {
+export function participacionesPorMes(shares: Share[], anio: number, monto: "gross" | "net" = "gross"): Mes[] {
   return mesesDe({ granularidad: "anio", anio, indice: 1 }).map((mes) => ({
     mes,
-    cerrado: suma(shares.filter((s) => s.stage === "cerrada" && s.month === mes).map((s) => s.net)),
-    enCurso: suma(shares.filter((s) => s.stage === "en-curso" && s.month === mes).map((s) => s.net)),
+    cerrado: suma(shares.filter((s) => s.stage === "cerrada" && s.month === mes).map((s) => s[monto])),
+    enCurso: suma(shares.filter((s) => s.stage === "en-curso" && s.month === mes).map((s) => s[monto])),
   }));
 }
 
@@ -161,8 +170,10 @@ export interface Produccion {
   person: string;
   netoCerrado: number;
   brutoCerrado: number;
+  brutoEnCurso: number;
   netoEnCurso: number;
   operaciones: number;
+  // La producción de un agente es el bruto que generó (definido con Gonzalo): por rol va en bruto.
   porRol: Record<Role, number>;
 }
 
@@ -174,12 +185,13 @@ export function produccion(shares: Share[], person: string, p: Periodo | null): 
     person,
     netoCerrado: suma(cerradas.map((s) => s.net)),
     brutoCerrado: suma(cerradas.map((s) => s.gross)),
+    brutoEnCurso: suma(enCurso.map((s) => s.gross)),
     netoEnCurso: suma(enCurso.map((s) => s.net)),
     operaciones: new Set(cerradas.map((s) => s.deal)).size,
     porRol: {
-      productor: suma(cerradas.filter((s) => s.role === "productor").map((s) => s.net)),
-      agente: suma(cerradas.filter((s) => s.role === "agente").map((s) => s.net)),
-      lider: suma(cerradas.filter((s) => s.role === "lider").map((s) => s.net)),
+      productor: suma(cerradas.filter((s) => s.role === "productor").map((s) => s.gross)),
+      agente: suma(cerradas.filter((s) => s.role === "agente").map((s) => s.gross)),
+      lider: suma(cerradas.filter((s) => s.role === "lider").map((s) => s.gross)),
     },
   };
 }

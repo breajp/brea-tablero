@@ -8,14 +8,15 @@ import { SelectorDePeriodo } from "@/components/tablero/SelectorDePeriodo";
 import { Button } from "@/components/ui/Button";
 import { Halos } from "@/components/ui/Halos";
 import { Segmented } from "@/components/ui/Segmented";
-import { anterior, hayHistorico, movimiento, porMes, produccion, resumen, type Corte } from "@/dominio/calculos";
+import { anterior, deBuenosAires, hayHistorico, movimiento, porMes, produccion, resumen, type Corte } from "@/dominio/calculos";
 import { contieneMes, nombre, nombreAnterior } from "@/dominio/periodo";
 import { EN_CARTERA } from "@/dominio/tipos";
 import { numero, usd } from "@/lib/formato";
 import { useSesion } from "@/sesion";
 
 export default function GeneralPage() {
-  const { data, periodo } = useSesion();
+  const { data: todo, periodo } = useSesion();
+  const data = useMemo(() => deBuenosAires(todo), [todo]);
   const r = useMemo(() => resumen(data, periodo), [data, periodo]);
   const previoCompleto = useMemo(() => resumen(data, anterior(periodo)), [data, periodo]);
   const conHistorico = hayHistorico(data, anterior(periodo));
@@ -32,15 +33,15 @@ export default function GeneralPage() {
     () =>
       data.people
         .map((p) => ({ ...produccion(data.shares, p.id, periodo), name: p.name }))
-        .filter((p) => p.netoCerrado || p.netoEnCurso)
-        .sort((a, b) => b.netoCerrado - a.netoCerrado)
+        .filter((p) => p.brutoCerrado || p.brutoEnCurso)
+        .sort((a, b) => b.brutoCerrado - a.brutoCerrado)
         .slice(0, 5),
     [data, periodo],
   );
 
   return (
     <>
-      <PageHeader eyebrow="Brea Propiedades" title="General" lede="Lo cerrado cuenta en su mes de cobro, que es el Mes impacto de la planilla." actions={<SelectorDePeriodo />} wide />
+      <PageHeader eyebrow="Brea Propiedades" title="General" lede="Lo cerrado cuenta en su mes de cobro (Mes impacto). Tres Arroyos (Gonza 3A) va aparte." actions={<SelectorDePeriodo />} wide />
 
       <section className="px-5 pt-10 md:px-10 md:pt-12">
         <div className="mx-auto grid max-w-[1320px] gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -150,7 +151,7 @@ export default function GeneralPage() {
 
       <Seccion
         titulo="Producción del equipo"
-        bajada={`Lo que cobró cada persona en ${nombre(periodo)}, sumando lo que hizo como productor, agente y líder.`}
+        bajada={`Producción bruta de cada persona en ${nombre(periodo)}, sumando lo que hizo como productor, agente y líder.`}
         acciones={
           <Button asChild variant="quiet" size="sm">
             <Link to="/agentes">
@@ -161,8 +162,8 @@ export default function GeneralPage() {
       >
         <div className="rounded-panel bg-paper-raised p-2 shadow-card">
           <Reparto
-            total={equipo.reduce((a, p) => a + p.netoCerrado, 0)}
-            porciones={equipo.map((p) => ({ clave: p.person, etiqueta: p.name, valor: p.netoCerrado, ayuda: p.netoEnCurso ? `${usd(p.netoEnCurso)} en curso` : undefined }))}
+            total={equipo.reduce((a, p) => a + p.brutoCerrado, 0)}
+            porciones={equipo.map((p) => ({ clave: p.person, etiqueta: p.name, valor: p.brutoCerrado, ayuda: p.brutoEnCurso ? `${usd(p.brutoEnCurso)} en curso` : undefined }))}
           />
         </div>
       </Seccion>

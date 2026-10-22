@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Indicador, Seccion } from "@/components/tablero/Indicador";
 import { Chip } from "@/components/ui/Chip";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
-import { esVolumen, mediana, motivoDeBaja, negociacionCreible, promedio } from "@/dominio/calculos";
+import { deBuenosAires, esVolumen, mediana, motivoDeBaja, negociacionCreible, promedio } from "@/dominio/calculos";
 import { CERRADAS, EN_CURSO, ESTADO, type Status } from "@/dominio/tipos";
 import { dias, numero, porcentaje, usd } from "@/lib/formato";
 import { cn } from "@/lib/cn";
@@ -13,7 +13,8 @@ import { useNombreDe, useSesion } from "@/sesion";
 const VIEJA = 180;
 
 export default function PropiedadesPage() {
-  const { data, esAdmin } = useSesion();
+  const { data: todo, esAdmin } = useSesion();
+  const data = useMemo(() => deBuenosAires(todo), [todo]);
   const nombreDe = useNombreDe();
 
   const v = useMemo(() => {
@@ -47,7 +48,7 @@ export default function PropiedadesPage() {
       <PageHeader
         eyebrow={esAdmin ? "Cartera" : "Tu cartera"}
         title="Propiedades"
-        lede="Cuánto tarda una propiedad en reservarse, cuánto se negocia y por qué se va. Los días son medianas: una propiedad de hace cinco años no desarma el promedio."
+        lede="Cuánto tarda una propiedad en reservarse, cuánto se negocia y por qué se va. Los días son medianas: una propiedad de hace cinco años no desarma el promedio. Tres Arroyos va aparte; sus propiedades están en Operaciones."
         wide
       />
 

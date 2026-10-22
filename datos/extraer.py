@@ -95,6 +95,9 @@ def main(ruta, salida):
     tasas = {persona(f.value): f.offset(0, 1).value for f in wb["COMISIONES"]["A"] if persona(f.value)}
 
     operaciones, participaciones, revisar = [], [], []
+    # Explicado por Gonzalo (22/10): Tres Arroyos es una unidad aparte, sin gerencia, y lo que
+    # parece faltar ahí es a propósito. Las bolsas ya no se usan: sus fórmulas son historia.
+    tres_arroyos, bolsas = set(), set()
     grupos = {}
     for r in range(3, ws.max_row + 1):
         prop = c(r, "propiedad")
@@ -107,6 +110,10 @@ def main(ruta, salida):
         nego = num(c(r, "nego"))
         cobro = mes(c(r, "impacto")) or mes(c(r, "conformacion")) or mes(c(r, "reserva"))
         nota = str(c(r, "data")).strip() if c(r, "data") else None
+        if str(c(r, "productor") or "").strip().lower() == "gonza 3a":
+            tres_arroyos.add(r)
+        if nota and "bolsa" in nota.lower():
+            bolsas.add(r)
 
         dias = None
         if listado:
@@ -155,7 +162,7 @@ def main(ruta, salida):
                             "detail": f"Figura como {ESTADOS[estado][1].lower()} pero no tiene fechas ni Mes Impacto: no suma en ningún mes."})
         if nego is not None and abs(nego) > 50:
             revisar.append({"kind": "moneda", "row": r, "property": prop,
-                            "detail": f"Publicada a {plata(publi)} y cerrada a {plata(cierre)}: parece mezclar pesos y dólares. La negociación da {nego:.1f} %.".replace(f"{nego:.1f}", f"{nego:.1f}".replace(".", ","))})
+                            "detail": f"Publicada a {plata(publi)} y cerrada a {plata(cierre)}: parece mezclar pesos y dólares (da {nego:.1f} % de negociación). Va todo en dólares: el alquiler, al cambio del día de firma del contrato.".replace(f"{nego:.1f}", f"{nego:.1f}".replace(".", ","))})
 
     # Fórmulas pisadas a mano en la maestra: la que usa la mayoría de la columna es la regla, el resto se desvía.
     for k in ["Z", "AA"] + DINERO:
@@ -192,6 +199,8 @@ def main(ruta, salida):
             for k, copia, maestra in diferencias(o):
                 revisar.append({"kind": "copia", "row": o["row"], "property": o["property"], "sheet": hoja,
                                 "detail": f"{ws.cell(2, col(k)).value}: {plata(copia)} en la hoja {hoja} y {plata(maestra)} en la maestra."})
+
+    revisar = [i for i in revisar if i["row"] not in tres_arroyos and not (i["kind"] == "formula" and i["row"] in bolsas)]
 
     personas = [{"id": p, "name": NOMBRES[p], "rate": tasas.get(p)} for p in NOMBRES]
     json.dump({
