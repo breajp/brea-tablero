@@ -10,7 +10,7 @@ const FALTANTES = [
   { icon: Receipt, titulo: "Costos", detalle: "Sin costos no hay resultado neto. Alcanza con una pestaña de mes, rubro y monto." },
   { icon: History, titulo: "Historial de precios", detalle: "Hoy se pisa el precio publicado. Una fila por cambio deja ver cada ajuste." },
   { icon: CalendarClock, titulo: "Fecha de cada cambio de estado", detalle: "Reserva y baja comparten columna, y la venta no tiene fecha propia. Con una columna por estado se cuentan bien por semana." },
-  { icon: Coins, titulo: "Moneda", detalle: "Algunos alquileres mezclan pesos y dólares. Una columna de moneda evita negociaciones de 99 %." },
+  { icon: Coins, titulo: "Alquileres en dólares", detalle: "Va todo en dólares: un alquiler en pesos se pasa al cambio del día de firma. Hay uno sin convertir." },
 ];
 
 function Lista({ issues, mostrarHoja }: { issues: Issue[]; mostrarHoja?: boolean }) {
@@ -19,9 +19,11 @@ function Lista({ issues, mostrarHoja }: { issues: Issue[]; mostrarHoja?: boolean
       {issues.map((i, n) => (
         <li key={n} className="grid gap-x-4 gap-y-1 rounded-panel bg-paper-raised px-4 py-3 md:grid-cols-[16rem_minmax(0,1fr)] md:px-5">
           <div className="flex min-w-0 items-center gap-2">
-            <Chip tone="muted" mono>
-              fila {i.row}
-            </Chip>
+            {i.row > 0 && (
+              <Chip tone="muted" mono className="shrink-0 whitespace-nowrap">
+                fila {i.row}
+              </Chip>
+            )}
             <span className="truncate text-base font-medium text-ink">{i.property}</span>
           </div>
           <div className="text-base text-ink-2">
@@ -38,6 +40,7 @@ export default function RevisarPage() {
   const { data } = useSesion();
   const grupos = useMemo(
     () => ({
+      regla: data.issues.filter((i) => i.kind === "regla"),
       copia: data.issues.filter((i) => i.kind === "copia"),
       formula: data.issues.filter((i) => i.kind === "formula"),
       datos: data.issues.filter((i) => i.kind === "fecha" || i.kind === "moneda"),
@@ -66,6 +69,12 @@ export default function RevisarPage() {
         </div>
       </Seccion>
 
+      {grupos.regla.length > 0 && (
+        <Seccion titulo="Reglas para confirmar" bajada="Donde la hoja 2026 y la planilla de comisiones dicen cosas distintas. Hace falta que Gonzalo diga cuál vale.">
+          <Lista issues={grupos.regla} />
+        </Seccion>
+      )}
+
       <Seccion
         titulo="La misma operación, montos distintos"
         bajada="Las hojas por agente son copias hechas a mano de la maestra, y con el tiempo se separaron. Por eso la producción de cada uno no cierra."
@@ -73,7 +82,7 @@ export default function RevisarPage() {
         <Lista issues={grupos.copia} mostrarHoja />
       </Seccion>
 
-      <Seccion titulo="Fórmulas cambiadas a mano" bajada="Filas de la maestra donde la fórmula no es la del resto de la columna. Algunas son bolsas o acuerdos especiales; conviene que pasen a ser una regla.">
+      <Seccion titulo="Fórmulas cambiadas a mano" bajada="Filas de la maestra donde la fórmula no es la del resto de la columna. Algunas son acuerdos especiales o un % viejo; conviene que pasen a ser una regla.">
         <Lista issues={grupos.formula} />
       </Seccion>
 

@@ -17,7 +17,7 @@ Es un sitio estático. No tiene servidor ni base de datos: se publica en GitHub 
 ```bash
 # En el Sheet: Archivo → Descargar → Microsoft Excel, guardado como datos/planilla.xlsx
 pip install openpyxl
-npm run datos        # extrae y vuelve a cifrar
+npm run datos        # extrae (planilla + comisiones) y vuelve a cifrar
 git add apps/web/src/datos/paquetes.json && git commit -m "Datos al <fecha>" && git push
 ```
 
@@ -52,7 +52,16 @@ Confirmadas con Gonzalo el 22/10/2026:
 
 - Bruto general = precio de cierre × (honorario vendedor + honorario comprador).
 - Bruto productor = bruto × (1 − acuerdo interno); el resto es del agente.
-- $ productor = bruto productor × su % (pestaña COMISIONES). El % cambia por categoría: quien llega a cierta facturación anual pasa a cobrar otro %.
+- $ productor = bruto productor × su % (pestaña COMISIONES). El % sale de la categoría del agente, según la planilla de comisiones (`datos/comisiones.xlsx`):
+
+  | Categoría | Agente | Líder | Brea | Meta anual (bruto) |
+  |---|---|---|---|---|
+  | Junior | 45 % | 20 % | 35 % | US$ 30.000 |
+  | Activo | 50 % | 15 % | 35 % | US$ 65.000 |
+  | Senior | 60 % | 5 % | 35 % | US$ 100.000 |
+  | Experto (líder de equipo) | 65 % | 0 % | 35 % | — |
+
+  Quien llega a la meta del año (y cumple el tiempo en la categoría) pasa a la siguiente. Para confirmar con Gonzalo: la hoja 2026 cobra siempre 15 % de líder, y Flor figura con 70 %, que no está en la tabla.
 - Líder = 15 % del bruto productor. Gerencia = 45 % de (oficina − líder), salvo cuando la producción es de Cecilia, que es la gerente.
 - Brea = oficina − líder − gerencia.
 - **La producción de un agente es el bruto** que generó como productor, agente y líder. El neto se muestra aparte.

@@ -10,8 +10,8 @@ import { Chip } from "@/components/ui/Chip";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { anterior, hayHistorico, participacionesPorMes, produccion } from "@/dominio/calculos";
 import { contieneMes, nombre, nombreAnterior } from "@/dominio/periodo";
-import { ESTADO, ROL, type Role } from "@/dominio/tipos";
-import { mesLargo, numero, usd } from "@/lib/formato";
+import { ESTADO, ROL, type Category, type Role } from "@/dominio/tipos";
+import { mesLargo, numero, tasa, usd } from "@/lib/formato";
 import NotFoundPage from "@/pages/NotFoundPage";
 import { useSesion } from "@/sesion";
 
@@ -41,6 +41,8 @@ export default function ProduccionPage() {
       .map((o) => ({ ...o, d: data.deals.find((d) => d.row === o.row)! }))
       .sort((a, b) => (b.month ?? "").localeCompare(a.month ?? ""));
   }, [data, persona]);
+
+  const categoria = data.categories?.find((c) => c.name === quien?.category);
 
   if (!quien) return <NotFoundPage />;
 
@@ -77,6 +79,8 @@ export default function ProduccionPage() {
           <Indicador etiqueta={`Acumulado ${periodo.anio}`} valor={usd(anual.brutoCerrado)} detalle={`${usd(anual.netoCerrado)} netos · ${numero(anual.operaciones)} operaciones`} />
         </div>
       </section>
+
+      {categoria && <TuCategoria categoria={categoria} produccion={anual.brutoCerrado} anio={periodo.anio} propia={propia} />}
 
       <div className="mx-auto grid max-w-[1320px] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Seccion titulo={`Producción bruta por mes · ${periodo.anio}`} className="lg:pr-5">
@@ -130,5 +134,49 @@ export default function ProduccionPage() {
       </Seccion>
       <div className="h-16" />
     </>
+  );
+}
+
+function TuCategoria({ categoria: c, produccion, anio, propia }: { categoria: Category; produccion: number; anio: number; propia: boolean }) {
+  const avance = c.goal ? Math.min(produccion / c.goal, 1) : null;
+  const falta = c.goal ? Math.max(c.goal - produccion, 0) : 0;
+  return (
+    <Seccion titulo="Categoría" bajada="Según la planilla de comisiones: la meta es la producción bruta del año para pasar a la categoría siguiente.">
+      <div className="grid gap-6 rounded-panel bg-paper-raised p-5 shadow-card md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] md:p-6">
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-base">
+            <Chip tone="neutral" className="min-h-[28px] px-3 font-medium">
+              Agente {c.name}
+            </Chip>
+          </div>
+          <p className="text-base text-ink-2 tnum">
+            {tasa(c.agentRate)} para {propia ? "vos" : "el agente"} · {tasa(c.leaderRate)} para el líder · {tasa(c.breaRate)} para Brea
+          </p>
+          {c.requirement && <p className="text-meta text-ink-3">Para pasar a la siguiente: {c.requirement}.</p>}
+        </div>
+        {c.goal ? (
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="label">Meta {anio}</span>
+              <span className="font-display text-h3 font-semibold text-ink tnum">{usd(c.goal)}</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-paper-sunken" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((avance ?? 0) * 100)} aria-label="Avance de la meta">
+              <div className="h-full rounded-full bg-ink transition-[width] duration-300 ease-out" style={{ width: `${(avance ?? 0) * 100}%` }} />
+            </div>
+            <p className="text-base text-ink-2 tnum">
+              {falta === 0 ? (
+                <>Meta cumplida: {usd(produccion)} de producción bruta en {anio}.</>
+              ) : (
+                <>
+                  {propia ? "Llevás" : "Lleva"} {usd(produccion)} ({Math.round((avance ?? 0) * 100)} %). {propia ? "Te faltan" : "Le faltan"} <span className="font-medium text-ink">{usd(falta)}</span>.
+                </>
+              )}
+            </p>
+          </div>
+        ) : (
+          <p className="self-center text-base text-ink-2">Es la categoría más alta: no tiene una meta para pasar a otra.</p>
+        )}
+      </div>
+    </Seccion>
   );
 }

@@ -14,6 +14,18 @@ export interface Person {
   id: string;
   name: string;
   rate: number | null;
+  category?: string | null;
+}
+
+// De la planilla de comisiones de Gonzalo. La meta es la producción bruta anual que hay que
+// alcanzar para pasar a la categoría siguiente.
+export interface Category {
+  name: string;
+  agentRate: number;
+  leaderRate: number;
+  breaRate: number;
+  goal: number | null;
+  requirement: string | null;
 }
 
 // Los montos de la distribución vienen solo en la vista de admin: el paquete de un agente
@@ -66,7 +78,7 @@ export interface Share {
 }
 
 export interface Issue {
-  kind: "formula" | "copia" | "fecha" | "moneda";
+  kind: "formula" | "copia" | "fecha" | "moneda" | "regla";
   row: number;
   property: string;
   detail: string;
@@ -78,6 +90,7 @@ export interface Tablero {
   generatedAt: string;
   source: string;
   people: Person[];
+  categories?: Category[];
   deals: Deal[];
   shares: Share[];
   issues: Issue[];

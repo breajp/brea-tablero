@@ -81,7 +81,43 @@ def mes(v):
     return f"{v.year}-{v.month:02d}" if isinstance(v, datetime) else None
 
 
-def main(ruta, salida):
+def leer_categorias(ruta):
+    """La tabla de categorías de la planilla de comisiones de Gonzalo (Hoja1, filas 4 a 7)."""
+    ws = openpyxl.load_workbook(ruta, data_only=True).worksheets[0]
+    nombres = {"JUNIOR": "Junior", "ACTIVO": "Activo", "SENIOR": "Senior", "EXPERTO": "Experto"}
+    categorias = []
+    for r in range(4, 8):
+        texto = str(ws.cell(r, 3).value or "").upper()
+        nombre = next((v for k, v in nombres.items() if k in texto), None)
+        agente = ws.cell(r, 6).value
+        if not nombre or not isinstance(agente, (int, float)):
+            continue
+        meta = ws.cell(r, 9).value
+        categorias.append({
+            "name": nombre, "agentRate": round(agente, 4), "leaderRate": round(0.65 - agente, 4),
+            "breaRate": round(ws.cell(r, 8).value or 0.35, 4),
+            "goal": meta if isinstance(meta, (int, float)) else None,
+            "requirement": requisito_legible(ws.cell(r, 4).value),
+        })
+    return categorias
+
+
+def requisito_legible(texto):
+    # "2 AÑOS DESDE EL INGRESO EN ESTA CATEGORÍA y LLEGAR A LA META $$ x año" → "2 años en esta categoría y llegar a la meta en el año"
+    if not texto:
+        return None
+    t = re.sub(r"\s+", " ", str(texto)).strip().lower()
+    t = t.replace("desde el ingreso en esta categoría", "en esta categoría").replace(" $$ x año", " en el año").replace(" de $$", "")
+    return t
+
+
+def categoria_de(tasa, categorias):
+    if not isinstance(tasa, (int, float)):
+        return None
+    return next((c["name"] for c in categorias if abs(c["agentRate"] - tasa) < 0.001), None)
+
+
+def main(ruta, salida, ruta_categorias=None):
     wb = openpyxl.load_workbook(ruta, data_only=True)
     wf = openpyxl.load_workbook(ruta)
     ws, fs = wb["2026"], wf["2026"]
@@ -202,14 +238,34 @@ def main(ruta, salida):
 
     revisar = [i for i in revisar if i["row"] not in tres_arroyos and not (i["kind"] == "formula" and i["row"] in bolsas)]
 
-    personas = [{"id": p, "name": NOMBRES[p], "rate": tasas.get(p)} for p in NOMBRES]
+    categorias = leer_categorias(ruta_categorias) if ruta_categorias else []
+    # Cecilia es la gerente y Gonza el dueño: su % no sale de una categoría.
+    sin_categoria = {"cecilia", "gonza"}
+    personas = [{"id": p, "name": NOMBRES[p], "rate": tasas.get(p),
+                 "category": None if p in sin_categoria else categoria_de(tasas.get(p), categorias)} for p in NOMBRES]
+
+    if categorias:
+        # El líder, según la tabla, se lleva 65 % menos el % del agente; la hoja 2026 cobra siempre 15 %.
+        for o in operaciones:
+            if not o["leader"] or not o["leaderNet"] or not o["producerGross"]:
+                continue
+            cat = next((c for c in categorias if c["name"] == categoria_de(tasas.get(o["producer"]), categorias)), None)
+            if cat and abs(cat["leaderRate"] - 0.15) > 0.001:
+                segun_tabla = o["producerGross"] * cat["leaderRate"]
+                revisar.append({"kind": "regla", "row": o["row"], "property": o["property"],
+                    "detail": f"Líder {NOMBRES.get(o['leader'], o['leader'])}: la hoja cobra 15 % (US$ {plata(o['leaderNet'])}). "
+                              f"Con la tabla de categorías, por ser {cat['name']} quien produce, serían {round(cat['leaderRate'] * 100)} % (US$ {plata(segun_tabla)})."})
+        for pers in personas:
+            if pers["id"] not in sin_categoria and pers["rate"] and not pers["category"]:
+                revisar.append({"kind": "regla", "row": 0, "property": f"COMISIONES · {pers['name']}",
+                    "detail": f"{pers['name']} figura con {round(pers['rate'] * 100)} %, que no está en la tabla de categorías (la más alta, Experto, es {round(max(c['agentRate'] for c in categorias) * 100)} %)."})
     json.dump({
         "generatedAt": HOY.isoformat(),
         "source": "2026 Operaciones Brea Propiedades · hoja 2026",
-        "people": personas, "deals": operaciones, "shares": participaciones, "issues": revisar,
+        "people": personas, "categories": categorias, "deals": operaciones, "shares": participaciones, "issues": revisar,
     }, open(salida, "w"), ensure_ascii=False, indent=1)
     print(f"{len(operaciones)} filas, {len(grupos)} operaciones, {len(participaciones)} participaciones, {len(revisar)} para revisar")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)

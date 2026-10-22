@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "npm run dev --workspace @brea-tablero/web",
-    "datos": "python3 datos/extraer.py datos/planilla.xlsx datos/tablero.json && node scripts/cifrar.mjs",
+    "datos": "python3 datos/extraer.py datos/planilla.xlsx datos/tablero.json datos/comisiones.xlsx && node scripts/cifrar.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",

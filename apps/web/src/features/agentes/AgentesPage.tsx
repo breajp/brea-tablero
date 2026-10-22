@@ -15,7 +15,12 @@ export default function AgentesPage() {
   const filas = useMemo(
     () =>
       data.people
-        .map((p) => ({ ...p, ...produccion(data.shares, p.id, periodo) }))
+        .map((p) => ({
+          ...p,
+          ...produccion(data.shares, p.id, periodo),
+          anual: produccion(data.shares, p.id, { granularidad: "anio", anio: periodo.anio, indice: 1 }).brutoCerrado,
+          meta: data.categories?.find((c) => c.name === p.category)?.goal ?? null,
+        }))
         .sort((a, b) => b.brutoCerrado - a.brutoCerrado || b.brutoEnCurso - a.brutoEnCurso),
     [data, periodo],
   );
@@ -32,7 +37,7 @@ export default function AgentesPage() {
       />
       <Seccion titulo={`Producción en ${nombre(periodo)}`} bajada={`${usd(total)} de producción bruta del equipo.`}>
         <div className="overflow-x-auto rounded-panel bg-paper-raised shadow-card">
-          <table className="w-full min-w-[820px] text-left">
+          <table className="w-full min-w-[920px] text-left">
             <thead>
               <tr className="text-meta text-ink-3">
                 <th className="px-5 py-3 font-medium">Persona</th>
@@ -43,6 +48,7 @@ export default function AgentesPage() {
                 <th className="px-3 py-3 text-right font-medium">Como líder</th>
                 <th className="px-3 py-3 text-right font-medium">En curso</th>
                 <th className="px-3 py-3 text-right font-medium">Operaciones</th>
+                <th className="px-3 py-3 text-right font-medium">Meta del año</th>
                 <th className="w-10" />
               </tr>
             </thead>
@@ -56,7 +62,7 @@ export default function AgentesPage() {
                         <Link to={`/agentes/${f.id}`} className="font-medium text-ink outline-hidden after:absolute after:inset-0">
                           {f.name}
                         </Link>
-                        <div className="text-meta text-ink-4">{f.rate !== null ? `${tasa(f.rate)} como productor` : "Sin % cargado"}</div>
+                        <div className="text-meta text-ink-4">{[f.category ? `Agente ${f.category}` : null, f.rate !== null ? tasa(f.rate) : null].filter(Boolean).join(" · ") || "Sin % cargado"}</div>
                       </div>
                     </div>
                   </td>
@@ -67,6 +73,7 @@ export default function AgentesPage() {
                   <td className="px-3 py-3 text-right">{f.porRol.lider ? usd(f.porRol.lider) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.brutoEnCurso ? usd(f.brutoEnCurso) : "—"}</td>
                   <td className="px-3 py-3 text-right">{numero(f.operaciones)}</td>
+                  <td className="px-3 py-3 text-right">{f.meta ? `${Math.round((f.anual / f.meta) * 100)} %` : "—"}</td>
                   <td className="pr-4 text-ink-4 group-hover:text-ink">
                     <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   </td>
