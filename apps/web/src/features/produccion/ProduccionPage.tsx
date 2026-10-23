@@ -146,11 +146,13 @@ function TuCategoria({ categoria: c, produccion, anio, propia }: { categoria: Ca
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-base">
             <Chip tone="neutral" className="min-h-[28px] px-3 font-medium">
-              Agente {c.name}
+              {c.name.startsWith("Acuerdo") ? c.name : `Agente ${c.name}`}
             </Chip>
           </div>
           <p className="text-base text-ink-2 tnum">
-            {tasa(c.agentRate)} para {propia ? "vos" : "el agente"} · {tasa(c.leaderRate)} para el líder · {tasa(c.breaRate)} para Brea
+            {[`${tasa(c.agentRate)} para ${propia ? "vos" : "el agente"}`, c.leaderRate > 0 ? `${tasa(c.leaderRate)} para el líder` : null, `${tasa(c.breaRate)} para Brea`]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
           {c.requirement && <p className="text-meta text-ink-3">Para pasar a la siguiente: {c.requirement}.</p>}
         </div>
@@ -174,7 +176,9 @@ function TuCategoria({ categoria: c, produccion, anio, propia }: { categoria: Ca
             </p>
           </div>
         ) : (
-          <p className="self-center text-base text-ink-2">Es la categoría más alta: no tiene una meta para pasar a otra.</p>
+          <p className="self-center text-base text-ink-2">
+            {c.name.startsWith("Acuerdo") ? "Es un acuerdo aparte con Gonzalo: no tiene una meta de categoría." : "Es la categoría más alta: no tiene una meta para pasar a otra."}
+          </p>
         )}
       </div>
     </Seccion>

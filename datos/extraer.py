@@ -102,6 +102,23 @@ def leer_categorias(ruta):
     return categorias
 
 
+def categorias_de_la_planilla(wb):
+    """La pestaña Categorías de la planilla ordenada, si existe: es la misma tabla, con el acuerdo de Flor."""
+    if "Categorías" not in wb.sheetnames:
+        return []
+    ws = wb["Categorías"]
+    categorias = []
+    for r in range(2, ws.max_row + 1):
+        nombre, agente = ws.cell(r, 1).value, ws.cell(r, 2).value
+        if not nombre or not isinstance(agente, (int, float)):
+            break
+        meta = ws.cell(r, 5).value
+        categorias.append({"name": str(nombre).strip(), "agentRate": round(agente, 4), "leaderRate": round(ws.cell(r, 3).value or 0, 4),
+                           "breaRate": round(ws.cell(r, 4).value or 0, 4), "goal": meta if isinstance(meta, (int, float)) and meta else None,
+                           "requirement": requisito_legible(ws.cell(r, 6).value) if isinstance(meta, (int, float)) and meta else None})
+    return categorias
+
+
 def requisito_legible(texto):
     # "2 AÑOS DESDE EL INGRESO EN ESTA CATEGORÍA y LLEGAR A LA META $$ x año" → "2 años en esta categoría y llegar a la meta en el año"
     if not texto:
@@ -238,23 +255,24 @@ def main(ruta, salida, ruta_categorias=None):
 
     revisar = [i for i in revisar if i["row"] not in tres_arroyos and not (i["kind"] == "formula" and i["row"] in bolsas)]
 
-    categorias = leer_categorias(ruta_categorias) if ruta_categorias else []
+    categorias = categorias_de_la_planilla(wb) or (leer_categorias(ruta_categorias) if ruta_categorias else [])
     # Cecilia es la gerente y Gonza el dueño: su % no sale de una categoría.
     sin_categoria = {"cecilia", "gonza"}
     personas = [{"id": p, "name": NOMBRES[p], "rate": tasas.get(p),
                  "category": None if p in sin_categoria else categoria_de(tasas.get(p), categorias)} for p in NOMBRES]
 
     if categorias:
-        # El líder, según la tabla, se lleva 65 % menos el % del agente; la hoja 2026 cobra siempre 15 %.
+        # Confirmado con Gonzalo (23/10): la oficina se queda siempre el 35 % y el líder cobra la
+        # diferencia con lo del productor (65 % menos su %). Se marca toda fila que no lo cumpla.
         for o in operaciones:
-            if not o["leader"] or not o["leaderNet"] or not o["producerGross"]:
+            tasa = tasas.get(o["producer"])
+            if not o["leader"] or not o["producerGross"] or not isinstance(tasa, (int, float)):
                 continue
-            cat = next((c for c in categorias if c["name"] == categoria_de(tasas.get(o["producer"]), categorias)), None)
-            if cat and abs(cat["leaderRate"] - 0.15) > 0.001:
-                segun_tabla = o["producerGross"] * cat["leaderRate"]
+            esperado = o["producerGross"] * max(0, 0.65 - tasa)
+            if abs((o["leaderNet"] or 0) - esperado) > 1:
                 revisar.append({"kind": "regla", "row": o["row"], "property": o["property"],
-                    "detail": f"Líder {NOMBRES.get(o['leader'], o['leader'])}: la hoja cobra 15 % (US$ {plata(o['leaderNet'])}). "
-                              f"Con la tabla de categorías, por ser {cat['name']} quien produce, serían {round(cat['leaderRate'] * 100)} % (US$ {plata(segun_tabla)})."})
+                    "detail": f"Líder {NOMBRES.get(o['leader'], o['leader'])}: cobra US$ {plata(o['leaderNet'] or 0)}. "
+                              f"Con la regla (65 % menos el {round(tasa * 100)} % del productor) serían US$ {plata(esperado)}."})
         for pers in personas:
             if pers["id"] not in sin_categoria and pers["rate"] and not pers["category"]:
                 revisar.append({"kind": "regla", "row": 0, "property": f"COMISIONES · {pers['name']}",

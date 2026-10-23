@@ -15,7 +15,7 @@ Es un sitio estático. No tiene servidor ni base de datos: se publica en GitHub 
 ## Actualizar los datos
 
 ```bash
-# En el Sheet: Archivo → Descargar → Microsoft Excel, guardado como datos/planilla.xlsx
+# En la planilla ordenada: Archivo → Descargar → Microsoft Excel, guardado como datos/planilla.xlsx
 pip install openpyxl
 npm run datos        # extrae (planilla + comisiones) y vuelve a cifrar
 git add apps/web/src/datos/paquetes.json && git commit -m "Datos al <fecha>" && git push
@@ -61,8 +61,8 @@ Confirmadas con Gonzalo el 22/10/2026:
   | Senior | 60 % | 5 % | 35 % | US$ 100.000 |
   | Experto (líder de equipo) | 65 % | 0 % | 35 % | — |
 
-  Quien llega a la meta del año (y cumple el tiempo en la categoría) pasa a la siguiente. Para confirmar con Gonzalo: la hoja 2026 cobra siempre 15 % de líder, y Flor figura con 70 %, que no está en la tabla.
-- Líder = 15 % del bruto productor. Gerencia = 45 % de (oficina − líder), salvo cuando la producción es de Cecilia, que es la gerente.
+  Quien llega a la meta del año (y cumple el tiempo en la categoría) pasa a la siguiente. Flor tiene un acuerdo aparte: 70 % en sus producciones y 30 % para la oficina. La tabla vive en la pestaña Categorías de la planilla ordenada.
+- Líder = 65 % menos el % del productor, sobre el bruto productor: la oficina se queda siempre el 35 % (confirmado el 23/10). Gerencia = 45 % de (oficina − líder), salvo cuando la producción es de Cecilia, que es la gerente.
 - Brea = oficina − líder − gerencia.
 - **La producción de un agente es el bruto** que generó como productor, agente y líder. El neto se muestra aparte.
 - Lo cerrado cuenta en el **mes de cobro** (Mes impacto): hasta que no se firma no se imputa nada.

@@ -62,7 +62,7 @@ export default function AgentesPage() {
                         <Link to={`/agentes/${f.id}`} className="font-medium text-ink outline-hidden after:absolute after:inset-0">
                           {f.name}
                         </Link>
-                        <div className="text-meta text-ink-4">{[f.category ? `Agente ${f.category}` : null, f.rate !== null ? tasa(f.rate) : null].filter(Boolean).join(" · ") || "Sin % cargado"}</div>
+                        <div className="text-meta text-ink-4">{[f.category ? (f.category.startsWith("Acuerdo") ? f.category : `Agente ${f.category}`) : null, f.rate !== null ? tasa(f.rate) : null].filter(Boolean).join(" · ") || "Sin % cargado"}</div>
                       </div>
                     </div>
                   </td>
