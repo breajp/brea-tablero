@@ -2,36 +2,36 @@
 // La página publicada lleva solo estos paquetes: sin la contraseña no se lee nada, aunque el
 // repo y el sitio sean públicos.
 //
-//   node scripts/cifrar.mjs            usa datos/usuarios.json (lo crea con contraseñas nuevas si no existe)
-//
-// Para cambiar una contraseña o sumar a alguien: editá datos/usuarios.json y volvé a correrlo.
-// rol: admin (ve todo), lider (lo suyo y lo de "equipo") o agente (lo suyo). "nombre" pisa el de Personas.
+// Quién entra sale de la pestaña Usuarios de la planilla (datos/accesos.json, lo deja extraer.py).
+// La contraseña de cada uno es la "Contraseña nueva" de esa pestaña si está escrita; si no, la
+// guardada en CONTRASENAS (secreto de GitHub) o en datos/contrasenas.json al correrlo a mano.
+// Sin datos/accesos.json usa datos/usuarios.json, el formato anterior.
 import { createCipheriv, createHash, pbkdf2Sync, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ITERACIONES = 310_000;
 const raiz = fileURLToPath(new URL("..", import.meta.url));
-const tablero = JSON.parse(readFileSync(`${raiz}datos/tablero.json`, "utf8"));
-const rutaUsuarios = `${raiz}datos/usuarios.json`;
+const leer = (ruta) => JSON.parse(readFileSync(`${raiz}${ruta}`, "utf8"));
+const tablero = leer("datos/tablero.json");
 
-function contrasenaNueva() {
-  const letras = "abcdefghjkmnpqrstuvwxyz23456789";
-  const bytes = randomBytes(12);
-  const s = [...bytes].map((b) => letras[b % letras.length]).join("");
-  return `${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8, 12)}`;
+function usuarios() {
+  if (!existsSync(`${raiz}datos/accesos.json`)) return leer("datos/usuarios.json");
+  const guardadas = process.env.CONTRASENAS
+    ? JSON.parse(process.env.CONTRASENAS)
+    : existsSync(`${raiz}datos/contrasenas.json`)
+      ? leer("datos/contrasenas.json")
+      : {};
+  return leer("datos/accesos.json").flatMap((a) => {
+    const contrasena = a.contrasenaNueva ?? guardadas[a.usuario];
+    // Sin contraseña no se inventa una: quedaría afuera sin saberlo. Se avisa y se sigue con el resto.
+    if (!contrasena) {
+      console.warn(`Sin contraseña, no entra: ${a.usuario}`);
+      return [];
+    }
+    return [{ usuario: a.usuario, rol: a.rol, persona: a.persona, equipo: a.equipo, nombre: a.nombre ?? undefined, contrasena }];
+  });
 }
-
-if (!existsSync(rutaUsuarios)) {
-  const usuarios = [
-    { usuario: "gonzalo", rol: "admin", persona: "gonza" },
-    ...tablero.people
-      .filter((p) => p.id !== "gonza")
-      .map((p) => ({ usuario: p.id, rol: "agente", persona: p.id })),
-  ].map((u) => ({ ...u, contrasena: contrasenaNueva() }));
-  writeFileSync(rutaUsuarios, JSON.stringify(usuarios, null, 2));
-}
-const usuarios = JSON.parse(readFileSync(rutaUsuarios, "utf8"));
 
 const PRIVADOS = ["gross", "producerGross", "agentGross", "producerNet", "agentNet", "office", "leaderNet", "management", "brea", "producerLabel"];
 
@@ -53,7 +53,13 @@ function vistaDe(personas) {
 
 export const claveDeUsuario = (u) => createHash("sha256").update(`brea:${u.trim().toLowerCase()}`).digest("hex");
 
-const paquetes = usuarios.map((u) => {
+const lista = usuarios();
+if (!lista.length) {
+  console.error("No hay ningún usuario con contraseña: no se publica, así nadie queda afuera.");
+  process.exit(1);
+}
+
+const paquetes = lista.map((u) => {
   const persona = tablero.people.find((p) => p.id === u.persona);
   const contenido = {
     user: { name: u.nombre ?? persona?.name ?? u.usuario, role: u.rol, person: u.persona, team: u.equipo ?? [] },

@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # Cada hora de 8 a 20 en Argentina (11 a 23 UTC).
+    - cron: "17 11-23 * * *"
 
 permissions:
   contents: read
@@ -20,6 +23,8 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      PLANILLA_URL: ${{ secrets.PLANILLA_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,7 +32,29 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci --ignore-scripts
+      # Los tests corren antes de bajar la planilla: los que comparan contra los números reales
+      # se saltean, porque esos números cambian cada vez que el equipo carga algo.
       - run: npm run test
+
+      # Sin PLANILLA_URL se publica lo que ya está en el repo (apps/web/src/datos/paquetes.json).
+      - if: env.PLANILLA_URL != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - if: env.PLANILLA_URL != ''
+        name: Bajar la planilla
+        run: |
+          pip install --quiet openpyxl
+          mkdir -p datos
+          curl --silent --fail --location "$PLANILLA_URL" --output datos/planilla.b64
+          base64 --decode datos/planilla.b64 > datos/planilla.xlsx
+          python datos/extraer.py datos/planilla.xlsx datos/tablero.json
+      - if: env.PLANILLA_URL != ''
+        name: Cifrar un paquete por usuario
+        env:
+          CONTRASENAS: ${{ secrets.CONTRASENAS }}
+        run: node scripts/cifrar.mjs
+
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -287,6 +287,10 @@ def main(ruta, salida, ruta_categorias=None):
     # Las copias por agente contra la maestra: misma operación, montos distintos.
     for hoja in [n for n in wb.sheetnames if n not in NO_SON_COPIAS]:
         h = wb[hoja]
+        # Una copia por agente tiene los mismos encabezados que la maestra; las pestañas nuevas
+        # (Producción, Usuarios…) no, y compararlas daría diferencias que no existen.
+        if str(h.cell(2, 2).value or "").strip() != "Propiedad":
+            continue
         for r in range(3, h.max_row + 1):
             cierre = num(h.cell(r, col("W")).value)
             if not cierre or not h.cell(r, 2).value:
@@ -343,6 +347,21 @@ def main(ruta, salida, ruta_categorias=None):
     for i in revisar:
         if clave(i["property"], i["detail"]) in notas:
             i["note"] = notas[clave(i["property"], i["detail"])]
+
+    # Los accesos van a un archivo aparte, nunca dentro de tablero.json: ese va entero en el paquete del admin.
+    ACCESOS = {"ve todo": "admin", "líder": "lider", "lider": "lider", "agente": "agente"}
+    accesos = []
+    for f in tabla(wb, "Usuarios"):
+        usuario = str(f.get("Usuario") or "").strip().lower()
+        rol = ACCESOS.get(str(f.get("Acceso") or "").strip().lower())
+        if not usuario or not rol:
+            continue
+        equipo = [directorio.persona(n) for n in str(f.get("Equipo (si es líder)") or "").split(",") if n.strip()]
+        accesos.append({"usuario": usuario, "rol": rol, "persona": directorio.persona(f.get("Persona")), "equipo": equipo,
+                        "nombre": str(f.get("Nombre que se muestra") or "").strip() or None,
+                        "contrasenaNueva": str(f.get("Contraseña nueva (opcional)") or "").strip() or None})
+    if accesos:
+        json.dump(accesos, open(salida.replace("tablero.json", "accesos.json"), "w"), ensure_ascii=False, indent=1)
 
     json.dump({
         "generatedAt": HOY.isoformat(),
