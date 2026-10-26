@@ -6,7 +6,8 @@ Es un sitio estático. No tiene servidor ni base de datos: se publica en GitHub 
 
 ## Cómo funciona el acceso
 
-1. `datos/extraer.py` lee la planilla (`datos/planilla.xlsx`, hoja **2026**) y deja `datos/tablero.json`. Busca cada columna por su encabezado, así que reordenar columnas no lo rompe; renombrar un encabezado sí, y avisa cuál falta.
+1. `datos/extraer.py` lee la planilla ordenada: la hoja 2026, Personas (quién es quién, % y rol), Categorías, Costos, Precios y las notas de Para revisar. Un nombre nuevo o cambiado en Personas llega solo; lo único que se toca a mano son los usuarios.
+   Antes leía (`datos/planilla.xlsx`, hoja **2026**) y deja `datos/tablero.json`. Busca cada columna por su encabezado, así que reordenar columnas no lo rompe; renombrar un encabezado sí, y avisa cuál falta.
 2. `scripts/cifrar.mjs` arma un paquete por usuario con lo que esa persona puede ver y lo cifra con su contraseña (AES-256-GCM, clave derivada con PBKDF2). El admin ve todo. Cada agente ve solo sus operaciones y su parte, sin los montos de los demás ni los de Brea.
 3. La página publicada lleva solo `apps/web/src/datos/paquetes.json`, que está cifrado. Sin la contraseña no se puede leer, aunque el repo sea público.
 
@@ -31,7 +32,7 @@ Están en `datos/usuarios.json`:
 { "usuario": "flor", "rol": "agente", "persona": "flor", "contrasena": "…" }
 ```
 
-- **Sumar a alguien:** agregalo con `rol` `admin` o `agente`. `persona` es el id que usa `datos/extraer.py` en `PERSONAS`.
+- **Sumar a alguien:** agregalo con `rol` `admin` (ve todo), `lider` (lo suyo y lo de las personas de `equipo`) o `agente` (lo suyo). `persona` es el nombre de la pestaña Personas en minúsculas y con guiones (`gonza-caba`, `tomas`). `nombre` es opcional y pisa el que se muestra.
 - **Cambiar una contraseña:** editala y corré `node scripts/cifrar.mjs`.
 - **Sacar a alguien:** borralo y volvé a cifrar. Su contraseña deja de abrir el tablero en cuanto se publica.
 

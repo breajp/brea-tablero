@@ -11,6 +11,7 @@ import { Segmented } from "@/components/ui/Segmented";
 import { anterior, deBuenosAires, hayHistorico, movimiento, porMes, produccion, resumen, type Corte } from "@/dominio/calculos";
 import { contieneMes, nombre, nombreAnterior } from "@/dominio/periodo";
 import { EN_CARTERA } from "@/dominio/tipos";
+import { cn } from "@/lib/cn";
 import { numero, usd } from "@/lib/formato";
 import { useSesion } from "@/sesion";
 
@@ -18,6 +19,9 @@ export default function GeneralPage() {
   const { data: todo, periodo } = useSesion();
   const data = useMemo(() => deBuenosAires(todo), [todo]);
   const r = useMemo(() => resumen(data, periodo), [data, periodo]);
+  const costosDelPeriodo = (todo.costs ?? []).filter((c) => contieneMes(periodo, c.month));
+  const hayCostos = costosDelPeriodo.length > 0;
+  const costos = costosDelPeriodo.reduce((a, c) => a + c.usd, 0);
   const previoCompleto = useMemo(() => resumen(data, anterior(periodo)), [data, periodo]);
   const conHistorico = hayHistorico(data, anterior(periodo));
   const previo = Object.fromEntries(Object.entries(previoCompleto).map(([k, v]) => [k, conHistorico ? v : null])) as Record<keyof typeof previoCompleto, number | null>;
@@ -107,17 +111,21 @@ export default function GeneralPage() {
               </div>
               <div>
                 <div className="label">Costos</div>
-                <div className="mt-1 text-h3 font-display font-semibold text-ink-4">Sin cargar</div>
+                <div className={cn("mt-1 text-h3 font-display font-semibold tnum", hayCostos ? "text-ink" : "text-ink-4")}>{hayCostos ? usd(costos) : "Sin cargar"}</div>
               </div>
               <div>
                 <div className="label">Resultado</div>
-                <div className="mt-1 text-h3 font-display font-semibold text-ink-4">—</div>
+                <div className={cn("mt-1 text-h3 font-display font-semibold tnum", !hayCostos ? "text-ink-4" : r.brea - costos < 0 ? "text-fail" : "text-ink")}>
+                  {hayCostos ? usd(r.brea - costos) : "—"}
+                </div>
               </div>
             </div>
             <div className="flex items-start gap-3 rounded-control bg-paper-sunken p-4">
               <Receipt className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
               <p className="text-meta text-ink-2">
-                La planilla todavía no tiene costos. Con una pestaña Costos (mes, rubro, monto) acá aparece el resultado de cada mes y su comparación con el anterior.
+                {hayCostos
+                  ? `Neto de Brea menos los gastos de ${nombre(periodo)}, pasados a dólares con el dólar de cada mes (pestaña Costos).`
+                  : `Todavía no hay gastos cargados para ${nombre(periodo)}. Van en la pestaña Costos de la planilla, en pesos y con el dólar del mes.`}
               </p>
             </div>
           </div>

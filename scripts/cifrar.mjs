@@ -5,6 +5,7 @@
 //   node scripts/cifrar.mjs            usa datos/usuarios.json (lo crea con contraseñas nuevas si no existe)
 //
 // Para cambiar una contraseña o sumar a alguien: editá datos/usuarios.json y volvé a correrlo.
+// rol: admin (ve todo), lider (lo suyo y lo de "equipo") o agente (lo suyo). "nombre" pisa el de Personas.
 import { createCipheriv, createHash, pbkdf2Sync, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -34,13 +35,18 @@ const usuarios = JSON.parse(readFileSync(rutaUsuarios, "utf8"));
 
 const PRIVADOS = ["gross", "producerGross", "agentGross", "producerNet", "agentNet", "office", "leaderNet", "management", "brea", "producerLabel"];
 
-function vistaDeAgente(persona) {
-  const suyas = tablero.deals.filter((d) => [d.producer, d.agent, d.leader].includes(persona));
+// Un agente ve lo suyo; una líder, lo suyo y lo de su equipo. Ninguno ve lo que se lleva Brea,
+// la gerencia, los costos ni lo que hay para revisar.
+function vistaDe(personas) {
+  const suyas = tablero.deals.filter((d) => [d.producer, d.agent, d.leader].some((p) => personas.includes(p)));
+  const propiedades = new Set(suyas.map((d) => d.property));
   return {
     ...tablero,
-    people: tablero.people.filter((p) => p.id === persona),
+    people: tablero.people.filter((p) => personas.includes(p.id)),
     deals: suyas.map((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !PRIVADOS.includes(k)))),
-    shares: tablero.shares.filter((s) => s.person === persona),
+    shares: tablero.shares.filter((s) => personas.includes(s.person)),
+    priceChanges: (tablero.priceChanges ?? []).filter((c) => propiedades.has(c.property)),
+    costs: [],
     issues: [],
   };
 }
@@ -50,8 +56,8 @@ export const claveDeUsuario = (u) => createHash("sha256").update(`brea:${u.trim(
 const paquetes = usuarios.map((u) => {
   const persona = tablero.people.find((p) => p.id === u.persona);
   const contenido = {
-    user: { name: persona?.name ?? u.usuario, role: u.rol, person: u.persona },
-    data: u.rol === "admin" ? tablero : vistaDeAgente(u.persona),
+    user: { name: u.nombre ?? persona?.name ?? u.usuario, role: u.rol, person: u.persona, team: u.equipo ?? [] },
+    data: u.rol === "admin" ? tablero : vistaDe([u.persona, ...(u.equipo ?? [])]),
   };
   const sal = randomBytes(16);
   const iv = randomBytes(12);

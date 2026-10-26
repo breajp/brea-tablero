@@ -9,6 +9,7 @@ interface Sesion {
   setPeriodo: (p: Periodo) => void;
   salir: () => void;
   esAdmin: boolean;
+  esLider: boolean;
 }
 
 const Contexto = createContext<Sesion | null>(null);
@@ -56,7 +57,7 @@ export function SesionProvider({ abierto, onSalir, children }: { abierto: Abiert
     onSalir();
   }, [onSalir]);
   const valor = useMemo(
-    () => ({ ...abierto, periodo, setPeriodo, salir, esAdmin: abierto.user.role === "admin" }),
+    () => ({ ...abierto, periodo, setPeriodo, salir, esAdmin: abierto.user.role === "admin", esLider: abierto.user.role === "lider" }),
     [abierto, periodo, salir],
   );
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

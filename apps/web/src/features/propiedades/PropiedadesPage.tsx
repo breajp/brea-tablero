@@ -6,7 +6,7 @@ import { Chip } from "@/components/ui/Chip";
 import { EstadoVacio } from "@/components/ui/EstadoVacio";
 import { deBuenosAires, esVolumen, mediana, motivoDeBaja, negociacionCreible, promedio } from "@/dominio/calculos";
 import { CERRADAS, EN_CURSO, ESTADO, type Status } from "@/dominio/tipos";
-import { dias, numero, porcentaje, usd } from "@/lib/formato";
+import { dias, fecha, numero, porcentaje, usd } from "@/lib/formato";
 import { cn } from "@/lib/cn";
 import { useNombreDe, useSesion } from "@/sesion";
 
@@ -16,6 +16,17 @@ export default function PropiedadesPage() {
   const { data: todo, esAdmin } = useSesion();
   const data = useMemo(() => deBuenosAires(todo), [todo]);
   const nombreDe = useNombreDe();
+
+  const ajustes = useMemo(() => {
+    const cambios = [...(todo.priceChanges ?? [])].sort((x, y) => (x.date ?? "").localeCompare(y.date ?? ""));
+    const ultimo = new Map<string, number | null>();
+    const filas = cambios.map((c) => {
+      const antes = ultimo.has(c.property) ? ultimo.get(c.property)! : (todo.deals.find((d) => d.property === c.property)?.listPrice ?? null);
+      ultimo.set(c.property, c.price);
+      return { ...c, antes, variacion: antes && c.price ? (c.price - antes) / antes : null };
+    });
+    return filas.reverse();
+  }, [todo]);
 
   const v = useMemo(() => {
     const deals = data.deals;
@@ -122,14 +133,30 @@ export default function PropiedadesPage() {
               ))}
             </ul>
           </Seccion>
-          <Seccion titulo="Ajustes de precio">
-            <div className="rounded-panel bg-paper-raised px-5 shadow-card">
-              <EstadoVacio
-                icon={TrendingDown}
-                titulo="Sin historial de precios todavía"
-                bajada="La planilla guarda un solo precio por propiedad. Con una pestaña Precios (propiedad, fecha, precio) acá se ve cada baja y cuánto tardó en reservarse después."
-              />
-            </div>
+          <Seccion titulo="Ajustes de precio" bajada="Cada cambio cargado en la pestaña Precios, del más nuevo al más viejo.">
+            {ajustes.length === 0 ? (
+              <div className="rounded-panel bg-paper-raised px-5 shadow-card">
+                <EstadoVacio
+                  icon={TrendingDown}
+                  titulo="Ningún cambio de precio cargado"
+                  bajada="Cuando un agente avisa un precio nuevo, se carga una fila en la pestaña Precios (propiedad, fecha y precio) y aparece acá."
+                />
+              </div>
+            ) : (
+              <ul className="space-y-1 rounded-panel bg-paper-raised p-2 shadow-card">
+                {ajustes.map((c, i) => (
+                  <li key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-control px-3 py-2.5 hover:bg-paper-sunken/60">
+                    <span className="truncate text-base text-ink">{c.property}</span>
+                    <span className={cn("text-right text-base font-medium tnum", c.variacion !== null && c.variacion < 0 ? "text-fail" : "text-ink")}>
+                      {c.variacion === null ? usd(c.price) : `${c.variacion > 0 ? "+" : ""}${porcentaje(c.variacion * 100)}`}
+                    </span>
+                    <span className="text-meta text-ink-3 tnum">
+                      {fecha(c.date)} · {c.antes !== null ? `${usd(c.antes)} → ` : ""}{usd(c.price)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Seccion>
         </div>
       </div>

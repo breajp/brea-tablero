@@ -17,7 +17,8 @@ import { useSesion } from "@/sesion";
 
 export default function ProduccionPage() {
   const { id } = useParams();
-  const { data, user, periodo, esAdmin } = useSesion();
+  const { data, user, periodo, esAdmin, esLider } = useSesion();
+  const veOtros = (esAdmin || esLider) && Boolean(id);
   const persona = id ?? user.person;
   const quien = data.people.find((p) => p.id === persona);
   const propia = persona === user.person && !id;
@@ -48,12 +49,12 @@ export default function ProduccionPage() {
 
   return (
     <>
-      {esAdmin && id && (
+      {veOtros && (
         <div className="px-5 pt-6 md:px-10 md:pt-8">
           <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-3">
             <Button asChild variant="ghost" size="sm">
               <Link to="/agentes">
-                <ArrowLeft className="h-3.5 w-3.5" /> Agentes
+                <ArrowLeft className="h-3.5 w-3.5" /> {esAdmin ? "Agentes" : "Equipo"}
               </Link>
             </Button>
             <Chip tone="ember">
@@ -63,7 +64,7 @@ export default function ProduccionPage() {
         </div>
       )}
       <PageHeader
-        className={esAdmin && id ? "pt-5 md:pt-6" : undefined}
+        className={veOtros ? "pt-5 md:pt-6" : undefined}
         eyebrow={propia ? `Hola, ${quien.name}` : "Producción individual"}
         title={propia ? "Tu producción" : quien.name}
         lede={`La producción es el bruto que ${propia ? "generaste" : "generó"} como productor, agente y líder, en el mes de cobro. Abajo, lo que ${propia ? "cobraste" : "cobró"} en mano.`}
@@ -74,7 +75,7 @@ export default function ProduccionPage() {
       <section className="px-5 pt-10 md:px-10 md:pt-12">
         <div className="mx-auto grid max-w-[1320px] gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Indicador etiqueta="Producción bruta" valor={usd(p.brutoCerrado)} actual={p.brutoCerrado} previo={conHistorico ? previo.brutoCerrado : null} contraQue={contra} />
-          <Indicador etiqueta="Neto cobrado" valor={usd(p.netoCerrado)} actual={p.netoCerrado} previo={conHistorico ? previo.netoCerrado : null} contraQue={contra} detalle="lo que queda después del reparto" />
+          <Indicador etiqueta="Neto cobrado" valor={usd(p.netoCerrado)} actual={p.netoCerrado} previo={conHistorico ? previo.netoCerrado : null} contraQue={contra} detalle={p.gerencia ? `incluye ${usd(p.gerencia)} como gerente` : "lo que queda después del reparto"} />
           <Indicador etiqueta="En curso" valor={usd(p.brutoEnCurso)} detalle={`bruto reservado y a la firma · ${usd(p.netoEnCurso)} netos`} />
           <Indicador etiqueta={`Acumulado ${periodo.anio}`} valor={usd(anual.brutoCerrado)} detalle={`${usd(anual.netoCerrado)} netos · ${numero(anual.operaciones)} operaciones`} />
         </div>

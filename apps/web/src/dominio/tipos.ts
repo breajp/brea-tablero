@@ -8,13 +8,14 @@ export type Status =
   | "pausada"
   | "baja";
 
-export type Role = "productor" | "agente" | "lider";
+export type Role = "productor" | "agente" | "lider" | "gerencia";
 
 export interface Person {
   id: string;
   name: string;
   rate: number | null;
   category?: string | null;
+  role?: string | null;
 }
 
 // De la planilla de comisiones de Gonzalo. La meta es la producción bruta anual que hay que
@@ -82,6 +83,8 @@ export interface Issue {
   row: number;
   property: string;
   detail: string;
+  // Lo que el equipo explicó en la columna NOTA de Para revisar.
+  note?: string;
   column?: string;
   sheet?: string;
 }
@@ -94,12 +97,15 @@ export interface Tablero {
   deals: Deal[];
   shares: Share[];
   issues: Issue[];
+  costs?: { month: string; usd: number }[];
+  priceChanges?: { property: string; date: string | null; price: number | null }[];
 }
 
 export interface Usuario {
   name: string;
-  role: "admin" | "agente";
+  role: "admin" | "lider" | "agente";
   person: string;
+  team?: string[];
 }
 
 export const ESTADO: Record<Status, { label: string; tone: "neutral" | "muted" | "pass" | "fail" | "warn" | "ember" }> = {
@@ -113,7 +119,7 @@ export const ESTADO: Record<Status, { label: string; tone: "neutral" | "muted" |
   baja: { label: "Baja", tone: "fail" },
 };
 
-export const ROL: Record<Role, string> = { productor: "Productor", agente: "Agente", lider: "Líder" };
+export const ROL: Record<Role, string> = { productor: "Productor", agente: "Agente", lider: "Líder", gerencia: "Gerencia" };
 
 export const CERRADAS: Status[] = ["vendida", "alquilada", "comprada"];
 export const EN_CURSO: Status[] = ["reservada", "firma"];

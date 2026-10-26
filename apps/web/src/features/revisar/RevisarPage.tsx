@@ -1,17 +1,10 @@
 import { useMemo } from "react";
-import { CalendarClock, Coins, History, Receipt } from "lucide-react";
+import { CalendarClock, History, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Seccion } from "@/components/tablero/Indicador";
 import { Chip } from "@/components/ui/Chip";
 import type { Issue } from "@/dominio/tipos";
 import { useSesion } from "@/sesion";
-
-const FALTANTES = [
-  { icon: Receipt, titulo: "Costos", detalle: "Sin costos no hay resultado neto. Alcanza con una pestaña de mes, rubro y monto." },
-  { icon: History, titulo: "Historial de precios", detalle: "Hoy se pisa el precio publicado. Una fila por cambio deja ver cada ajuste." },
-  { icon: CalendarClock, titulo: "Fecha de cada cambio de estado", detalle: "Reserva y baja comparten columna, y la venta no tiene fecha propia. Con una columna por estado se cuentan bien por semana." },
-  { icon: Coins, titulo: "Alquileres en dólares", detalle: "Va todo en dólares: un alquiler en pesos se pasa al cambio del día de firma. Hay uno sin convertir." },
-];
 
 function Lista({ issues, mostrarHoja }: { issues: Issue[]; mostrarHoja?: boolean }) {
   return (
@@ -26,9 +19,12 @@ function Lista({ issues, mostrarHoja }: { issues: Issue[]; mostrarHoja?: boolean
             )}
             <span className="truncate text-base font-medium text-ink">{i.property}</span>
           </div>
-          <div className="text-base text-ink-2">
-            {mostrarHoja && i.sheet && <span className="text-ink-3">Hoja {i.sheet} · </span>}
-            {i.detail}
+          <div className="min-w-0">
+            <p className="text-base text-ink-2">
+              {mostrarHoja && i.sheet && <span className="text-ink-3">Hoja {i.sheet} · </span>}
+              {i.detail}
+            </p>
+            {i.note && <p className="mt-1 text-meta text-ink-3">Nota del equipo: {i.note}</p>}
           </div>
         </li>
       ))}
@@ -38,57 +34,80 @@ function Lista({ issues, mostrarHoja }: { issues: Issue[]; mostrarHoja?: boolean
 
 export default function RevisarPage() {
   const { data } = useSesion();
-  const grupos = useMemo(
-    () => ({
-      regla: data.issues.filter((i) => i.kind === "regla"),
-      copia: data.issues.filter((i) => i.kind === "copia"),
-      formula: data.issues.filter((i) => i.kind === "formula"),
-      datos: data.issues.filter((i) => i.kind === "fecha" || i.kind === "moneda"),
-    }),
-    [data],
-  );
+  const g = useMemo(() => {
+    const pendientes = data.issues.filter((i) => !i.note);
+    return {
+      pendientes: pendientes.length,
+      explicados: data.issues.filter((i) => i.note),
+      regla: pendientes.filter((i) => i.kind === "regla"),
+      copia: pendientes.filter((i) => i.kind === "copia"),
+      formula: pendientes.filter((i) => i.kind === "formula"),
+      datos: pendientes.filter((i) => i.kind === "fecha" || i.kind === "moneda"),
+    };
+  }, [data]);
+
+  const faltantes = [
+    !data.costs?.length && { icon: Receipt, titulo: "Costos", detalle: "Van en la pestaña Costos, en pesos y con el dólar del mes. Con eso aparece el resultado neto en General." },
+    !data.priceChanges?.length && { icon: History, titulo: "Cambios de precio", detalle: "Cada cambio, una fila en la pestaña Precios: el agente lo avisa por mail y se carga ahí." },
+    { icon: CalendarClock, titulo: "Fecha de cada cambio de estado", detalle: "Reserva y baja comparten columna y la venta no tiene fecha propia. Con una columna por estado se cuentan bien por semana." },
+  ].filter(Boolean) as { icon: typeof Receipt; titulo: string; detalle: string }[];
 
   return (
     <>
       <PageHeader
         eyebrow="Planilla"
         title="Para revisar"
-        lede={`${data.issues.length} cosas que hoy hacen que dos personas lleguen a números distintos. Ordenarlas es lo que vuelve confiable a este tablero.`}
+        lede={
+          g.pendientes
+            ? `${g.pendientes} cosas que hoy hacen que dos personas lleguen a números distintos.${g.explicados.length ? ` Otras ${g.explicados.length} están explicadas por el equipo.` : ""}`
+            : `No queda nada pendiente.${g.explicados.length ? ` Hay ${g.explicados.length} casos particulares explicados por el equipo.` : ""}`
+        }
         wide
       />
 
-      <Seccion titulo="Lo que falta cargar" bajada="Cuatro pedidos del tablero que la planilla todavía no puede responder.">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {FALTANTES.map(({ icon: Icon, titulo, detalle }) => (
-            <div key={titulo} className="rounded-panel bg-paper-raised p-5 shadow-card">
-              <Icon className="h-[22px] w-[22px] text-ink-3" strokeWidth={1.6} aria-hidden />
-              <div className="mt-3 font-display text-h3 font-semibold text-ink">{titulo}</div>
-              <p className="mt-1 text-meta text-ink-2">{detalle}</p>
-            </div>
-          ))}
-        </div>
-      </Seccion>
-
-      {grupos.regla.length > 0 && (
-        <Seccion titulo="Reglas para confirmar" bajada="Donde la hoja 2026 y la planilla de comisiones dicen cosas distintas. Hace falta que Gonzalo diga cuál vale.">
-          <Lista issues={grupos.regla} />
+      {faltantes.length > 0 && (
+        <Seccion titulo="Lo que falta cargar" bajada="Pedidos del tablero que la planilla todavía no puede responder.">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {faltantes.map(({ icon: Icon, titulo, detalle }) => (
+              <div key={titulo} className="rounded-panel bg-paper-raised p-5 shadow-card">
+                <Icon className="h-[22px] w-[22px] text-ink-3" strokeWidth={1.6} aria-hidden />
+                <div className="mt-3 font-display text-h3 font-semibold text-ink">{titulo}</div>
+                <p className="mt-1 text-meta text-ink-2">{detalle}</p>
+              </div>
+            ))}
+          </div>
         </Seccion>
       )}
 
-      <Seccion
-        titulo="La misma operación, montos distintos"
-        bajada="Las hojas por agente son copias hechas a mano de la maestra, y con el tiempo se separaron. Por eso la producción de cada uno no cierra."
-      >
-        <Lista issues={grupos.copia} mostrarHoja />
-      </Seccion>
+      {g.regla.length > 0 && (
+        <Seccion titulo="Reglas para confirmar" bajada="Donde la hoja 2026 y la planilla de comisiones dicen cosas distintas.">
+          <Lista issues={g.regla} />
+        </Seccion>
+      )}
 
-      <Seccion titulo="Fórmulas cambiadas a mano" bajada="Filas de la maestra donde la fórmula no es la del resto de la columna. Algunas son acuerdos especiales o un % viejo; conviene que pasen a ser una regla.">
-        <Lista issues={grupos.formula} />
-      </Seccion>
+      {g.copia.length > 0 && (
+        <Seccion titulo="La misma operación, montos distintos" bajada="Las hojas por agente son copias hechas a mano de la maestra y se fueron separando.">
+          <Lista issues={g.copia} mostrarHoja />
+        </Seccion>
+      )}
 
-      <Seccion titulo="Datos faltantes o raros">
-        <Lista issues={grupos.datos} />
-      </Seccion>
+      {g.formula.length > 0 && (
+        <Seccion titulo="Fórmulas cambiadas a mano" bajada="Filas de la maestra donde la fórmula no es la del resto de la columna. Si es a propósito, explicalo en la columna NOTA de Para revisar.">
+          <Lista issues={g.formula} />
+        </Seccion>
+      )}
+
+      {g.datos.length > 0 && (
+        <Seccion titulo="Datos faltantes o raros">
+          <Lista issues={g.datos} />
+        </Seccion>
+      )}
+
+      {g.explicados.length > 0 && (
+        <Seccion titulo="Casos particulares, con explicación" bajada="Están así a propósito: el equipo lo explicó en la columna NOTA. Conviene ver cómo resolverlos si van a seguir pasando.">
+          <Lista issues={g.explicados} mostrarHoja />
+        </Seccion>
+      )}
       <div className="h-16" />
     </>
   );

@@ -33,4 +33,11 @@ const AGENTE: ItemDeNavegacion[] = [
   { to: "/propiedades", label: "Propiedades", icon: PropiedadesIcon, end: false },
 ];
 
-export const navegacionPara = (esAdmin: boolean) => (esAdmin ? ADMIN : AGENTE);
+const LIDER: ItemDeNavegacion[] = [
+  { to: "/", label: "Producción", icon: UsoIcon, end: true },
+  { to: "/agentes", label: "Equipo", icon: AgentesIcon, end: false },
+  { to: "/operaciones", label: "Operaciones", icon: OperacionesIcon, end: false },
+  { to: "/propiedades", label: "Propiedades", icon: PropiedadesIcon, end: false },
+];
+
+export const navegacionPara = (rol: "admin" | "lider" | "agente") => ({ admin: ADMIN, lider: LIDER, agente: AGENTE })[rol];

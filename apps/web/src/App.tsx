@@ -24,7 +24,7 @@ function ConShell() {
 }
 
 export default function App() {
-  const { esAdmin } = useSesion();
+  const { esAdmin, esLider } = useSesion();
   return (
     <TooltipProvider>
       <Routes>
@@ -35,6 +35,12 @@ export default function App() {
               <Route path="/agentes" element={<AgentesPage />} />
               <Route path="/agentes/:id" element={<ProduccionPage />} />
               <Route path="/revisar" element={<RevisarPage />} />
+            </>
+          ) : esLider ? (
+            <>
+              <Route path="/" element={<ProduccionPage />} />
+              <Route path="/agentes" element={<AgentesPage />} />
+              <Route path="/agentes/:id" element={<ProduccionPage />} />
             </>
           ) : (
             <Route path="/" element={<ProduccionPage />} />

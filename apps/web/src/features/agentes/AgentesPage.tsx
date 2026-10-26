@@ -11,7 +11,7 @@ import { numero, tasa, usd } from "@/lib/formato";
 import { useSesion } from "@/sesion";
 
 export default function AgentesPage() {
-  const { data, periodo } = useSesion();
+  const { data, periodo, esAdmin } = useSesion();
   const filas = useMemo(
     () =>
       data.people
@@ -29,15 +29,15 @@ export default function AgentesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Equipo"
-        title="Agentes"
+        eyebrow={esAdmin ? "Equipo" : "Tu equipo"}
+        title={esAdmin ? "Agentes" : "Equipo"}
         lede="La producción de cada persona es el bruto que generó como productor, agente y líder. Entrá a una para ver su tablero tal como lo ve ella."
         actions={<SelectorDePeriodo />}
         wide
       />
       <Seccion titulo={`Producción en ${nombre(periodo)}`} bajada={`${usd(total)} de producción bruta del equipo.`}>
         <div className="overflow-x-auto rounded-panel bg-paper-raised shadow-card">
-          <table className="w-full min-w-[920px] text-left">
+          <table className="w-full min-w-[1020px] whitespace-nowrap text-left">
             <thead>
               <tr className="text-meta text-ink-3">
                 <th className="px-5 py-3 font-medium">Persona</th>
@@ -46,6 +46,7 @@ export default function AgentesPage() {
                 <th className="px-3 py-3 text-right font-medium">Como productor</th>
                 <th className="px-3 py-3 text-right font-medium">Como agente</th>
                 <th className="px-3 py-3 text-right font-medium">Como líder</th>
+                <th className="px-3 py-3 text-right font-medium">Como gerente</th>
                 <th className="px-3 py-3 text-right font-medium">En curso</th>
                 <th className="px-3 py-3 text-right font-medium">Operaciones</th>
                 <th className="px-3 py-3 text-right font-medium">Meta del año</th>
@@ -71,6 +72,7 @@ export default function AgentesPage() {
                   <td className="px-3 py-3 text-right">{f.porRol.productor ? usd(f.porRol.productor) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.porRol.agente ? usd(f.porRol.agente) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.porRol.lider ? usd(f.porRol.lider) : "—"}</td>
+                  <td className="px-3 py-3 text-right">{f.gerencia ? usd(f.gerencia) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.brutoEnCurso ? usd(f.brutoEnCurso) : "—"}</td>
                   <td className="px-3 py-3 text-right">{numero(f.operaciones)}</td>
                   <td className="px-3 py-3 text-right">{f.meta ? `${Math.round((f.anual / f.meta) * 100)} %` : "—"}</td>
@@ -82,9 +84,11 @@ export default function AgentesPage() {
             </tbody>
           </table>
         </div>
-        <p className="mt-3 max-w-[80ch] text-meta text-ink-3">
-          Lo de Gonza 3A es Tres Arroyos, una unidad aparte sin gerencia. Gonza CABA tiene 0 % de productor: su neto queda en la oficina.
-        </p>
+        {esAdmin && (
+          <p className="mt-3 max-w-[80ch] text-meta text-ink-3">
+            Gonza 3A es Tres Arroyos, una unidad aparte sin gerencia. Gonza CABA tiene 0 % de productor: su neto queda en la oficina. Como gerente es neto y no suma a la producción.
+          </p>
+        )}
       </Seccion>
       <div className="h-16" />
     </>

@@ -68,8 +68,8 @@ function RailLink({ to, label, icon: Icon, end, tambien, expanded }: ItemDeNaveg
 
 export function Shell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const { user, esAdmin, salir } = useSesion();
-  const NAV = navegacionPara(esAdmin);
+  const { user, esAdmin, esLider, salir } = useSesion();
+  const NAV = navegacionPara(user.role);
   // La animación de entrada va por pantalla, no por URL: un cambio que no es
   // otra pantalla (una solapa, un parámetro) no tiene que repetirla. Si una
   // sección tiene sub-rutas que son la misma pantalla, normalizalas acá.
@@ -174,7 +174,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {expanded && (
               <div className="min-w-0">
                 <div className="truncate text-base font-medium text-ink">{user.name}</div>
-                <div className="text-meta text-ink-3">{esAdmin ? "Administra" : "Agente"}</div>
+                <div className="text-meta text-ink-3">{esAdmin ? "Administra" : esLider ? "Líder de equipo" : "Agente"}</div>
               </div>
             )}
           </div>

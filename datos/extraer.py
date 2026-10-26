@@ -6,6 +6,7 @@ solo se comparan contra la maestra para mostrar dónde no coinciden.
 import json
 import re
 import sys
+import unicodedata
 from datetime import date, datetime
 
 import openpyxl
@@ -21,15 +22,6 @@ ESTADOS = {
     "F": ("comprada", "Comprada"),
     "G": ("pausada", "Pausada"),
     "H": ("baja", "Baja"),
-}
-PERSONAS = {
-    "gonza 3a": "gonza", "gonza caba": "gonza", "gonza": "gonza",
-    "flor": "flor", "cecilia": "cecilia", "nati": "nati", "juana": "juana",
-    "mariana": "mariana", "tomas": "tomas", "emily": "emily", "agustina": "agustina",
-}
-NOMBRES = {
-    "gonza": "Gonza", "flor": "Flor", "cecilia": "Cecilia", "nati": "Nati", "juana": "Juana",
-    "mariana": "Mariana", "tomas": "Tomás", "emily": "Emily", "agustina": "Agustina",
 }
 DINERO = ["AB", "AC", "AD", "AE", "AF", "AG", "AH", "AI", "AJ"]
 NO_SON_COPIAS = {"2026", "COMISIONES", "Hoja 6"}
@@ -47,10 +39,64 @@ ENCABEZADOS = {
 }
 
 
-def persona(v):
-    if not v:
-        return None
-    return PERSONAS.get(str(v).strip().lower())
+def sin_tildes(texto):
+    return unicodedata.normalize("NFD", str(texto)).encode("ascii", "ignore").decode()
+
+
+def slug(texto):
+    return re.sub(r"[^a-z0-9]+", "-", sin_tildes(texto).lower()).strip("-")
+
+
+class Directorio:
+    """Quién es quién, desde la pestaña Personas: un nombre nuevo o cambiado llega al tablero sin tocar código."""
+
+    def __init__(self, wb):
+        self.alias, self.nombres, self.tasas, self.roles = {}, {}, {}, {}
+        ws = wb["Personas"]
+        hdr = {str(ws.cell(1, i).value).strip(): i for i in range(1, ws.max_column + 1) if ws.cell(1, i).value}
+        for r in range(2, ws.max_row + 1):
+            planilla, nombre = ws.cell(r, hdr["Nombre en la planilla"]).value, ws.cell(r, hdr["Persona"]).value
+            if not planilla or not nombre:
+                continue
+            pid = slug(nombre)
+            self.alias[sin_tildes(planilla).strip().lower()] = pid
+            self.alias.setdefault(sin_tildes(nombre).strip().lower(), pid)
+            self.nombres.setdefault(pid, str(nombre).strip())
+            tasa = ws.cell(r, hdr["% como productor"]).value
+            if isinstance(tasa, (int, float)):
+                self.tasas[pid] = tasa
+            if "Rol" in hdr and ws.cell(r, hdr["Rol"]).value:
+                self.roles[pid] = str(ws.cell(r, hdr["Rol"]).value).strip()
+
+    def persona(self, valor, productor=None):
+        if not valor or not str(valor).strip():
+            return None
+        clave = sin_tildes(valor).strip().lower()
+        if clave in self.alias:
+            return self.alias[clave]
+        # "Gonza" como agente es el Gonza de la unidad del productor de esa fila (3A o CABA).
+        if productor and productor.startswith(slug(valor)):
+            return productor
+        pid = slug(valor)
+        self.nombres.setdefault(pid, str(valor).strip())
+        return pid
+
+    def gerente(self):
+        return next((p for p, rol in self.roles.items() if rol.lower() == "gerente"), None)
+
+
+def tabla(wb, hoja, fila_encabezado=1):
+    """Las filas de una pestaña como diccionarios por encabezado; las filas vacías se saltean."""
+    if hoja not in wb.sheetnames:
+        return []
+    ws = wb[hoja]
+    hdr = {i: str(ws.cell(fila_encabezado, i).value).strip() for i in range(1, ws.max_column + 1) if ws.cell(fila_encabezado, i).value}
+    filas = []
+    for r in range(fila_encabezado + 1, ws.max_row + 1):
+        fila = {h: ws.cell(r, i).value for i, h in hdr.items()}
+        if any(v not in (None, "") for v in fila.values()):
+            filas.append(fila)
+    return filas
 
 
 def num(v):
@@ -145,7 +191,9 @@ def main(ruta, salida, ruta_categorias=None):
     L = {k: letras[h] for k, h in ENCABEZADOS.items()}
     c = lambda r, k: ws.cell(r, col(L.get(k, k))).value
 
-    tasas = {persona(f.value): f.offset(0, 1).value for f in wb["COMISIONES"]["A"] if persona(f.value)}
+    directorio = Directorio(wb)
+    tasas, NOMBRES = directorio.tasas, directorio.nombres
+    gerente = directorio.gerente()
 
     operaciones, participaciones, revisar = [], [], []
     # Explicado por Gonzalo (22/10): Tres Arroyos es una unidad aparte, sin gerencia, y lo que
@@ -180,8 +228,8 @@ def main(ruta, salida, ruta_categorias=None):
 
         op = {
             "row": r, "deal": trato, "property": prop.strip(), "status": estado_id,
-            "producer": persona(c(r, "productor")), "producerLabel": c(r, "productor"),
-            "agent": persona(c(r, "agente")), "leader": persona(c(r, "lider")),
+            "producer": directorio.persona(c(r, "productor")), "producerLabel": c(r, "productor"),
+            "agent": directorio.persona(c(r, "agente"), directorio.persona(c(r, "productor"))), "leader": directorio.persona(c(r, "lider")),
             "kind": c(r, "operacion"), "typology": c(r, "tipologia"),
             "sellerFee": pct(c(r, "vendedor")), "buyerFee": pct(c(r, "comprador")), "internalSplit": pct(c(r, "interno")),
             "notes": nota, "listedAt": listado, "reservedAt": reserva, "signedAt": dia(c(r, "firma")),
@@ -199,6 +247,8 @@ def main(ruta, salida, ruta_categorias=None):
                 ("productor", op["producer"], op["producerGross"], op["producerNet"]),
                 ("agente", op["agent"], op["agentGross"], op["agentNet"]),
                 ("lider", op["leader"], op["leaderNet"], op["leaderNet"]),
+                # La gerencia no es producción (bruto 0), pero es plata que cobra quien tiene rol Gerente.
+                ("gerencia", gerente, 0, op["management"]),
             ):
                 if quien and (bruto or neto):
                     participaciones.append({
@@ -257,8 +307,9 @@ def main(ruta, salida, ruta_categorias=None):
 
     categorias = categorias_de_la_planilla(wb) or (leer_categorias(ruta_categorias) if ruta_categorias else [])
     # Cecilia es la gerente y Gonza el dueño: su % no sale de una categoría.
-    sin_categoria = {"cecilia", "gonza"}
-    personas = [{"id": p, "name": NOMBRES[p], "rate": tasas.get(p),
+    # Gerente, dueño y externos no tienen categoría: su % no sale de la tabla.
+    sin_categoria = {p for p, rol in directorio.roles.items() if rol.lower() in ("gerente", "dueño", "externo")}
+    personas = [{"id": p, "name": NOMBRES[p], "rate": tasas.get(p), "role": directorio.roles.get(p),
                  "category": None if p in sin_categoria else categoria_de(tasas.get(p), categorias)} for p in NOMBRES]
 
     if categorias:
@@ -277,10 +328,27 @@ def main(ruta, salida, ruta_categorias=None):
             if pers["id"] not in sin_categoria and pers["rate"] and not pers["category"]:
                 revisar.append({"kind": "regla", "row": 0, "property": f"COMISIONES · {pers['name']}",
                     "detail": f"{pers['name']} figura con {round(pers['rate'] * 100)} %, que no está en la tabla de categorías (la más alta, Experto, es {round(max(c['agentRate'] for c in categorias) * 100)} %)."})
+    costos = {}
+    for f in tabla(wb, "Costos"):
+        cuando, usd = mes(f.get("Mes")), f.get("Monto (US$)")
+        if cuando and isinstance(usd, (int, float)):
+            costos[cuando] = costos.get(cuando, 0) + usd
+    precios = [{"property": str(f["Propiedad"]).strip(), "date": dia(f.get("Fecha")), "price": num(f.get("Precio publicado (US$)"))}
+               for f in tabla(wb, "Precios") if f.get("Propiedad") and isinstance(f.get("Precio publicado (US$)"), (int, float))]
+
+    # Lo que el equipo explicó en la columna NOTA de Para revisar viaja con el aviso. Los números de fila
+    # cambian cuando se agregan filas, así que se compara el texto sin números.
+    clave = lambda prop, detalle: (str(prop).strip().lower(), re.sub(r"\d+", "#", str(detalle)))
+    notas = {clave(f.get("Propiedad"), f.get("Qué pasa")): str(f["NOTA"]).strip() for f in tabla(wb, "Para revisar", 2) if f.get("NOTA")}
+    for i in revisar:
+        if clave(i["property"], i["detail"]) in notas:
+            i["note"] = notas[clave(i["property"], i["detail"])]
+
     json.dump({
         "generatedAt": HOY.isoformat(),
         "source": "2026 Operaciones Brea Propiedades · hoja 2026",
         "people": personas, "categories": categorias, "deals": operaciones, "shares": participaciones, "issues": revisar,
+        "costs": [{"month": m, "usd": round(v, 2)} for m, v in sorted(costos.items())], "priceChanges": precios,
     }, open(salida, "w"), ensure_ascii=False, indent=1)
     print(f"{len(operaciones)} filas, {len(grupos)} operaciones, {len(participaciones)} participaciones, {len(revisar)} para revisar")
 

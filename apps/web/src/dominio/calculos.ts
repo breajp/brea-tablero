@@ -172,6 +172,8 @@ export interface Produccion {
   brutoCerrado: number;
   brutoEnCurso: number;
   netoEnCurso: number;
+  // Lo que cobra como gerente: es neto y no cuenta como producción.
+  gerencia: number;
   operaciones: number;
   // La producción de un agente es el bruto que generó (definido con Gonzalo): por rol va en bruto.
   porRol: Record<Role, number>;
@@ -187,11 +189,13 @@ export function produccion(shares: Share[], person: string, p: Periodo | null): 
     brutoCerrado: suma(cerradas.map((s) => s.gross)),
     brutoEnCurso: suma(enCurso.map((s) => s.gross)),
     netoEnCurso: suma(enCurso.map((s) => s.net)),
-    operaciones: new Set(cerradas.map((s) => s.deal)).size,
+    operaciones: new Set(cerradas.filter((s) => s.role !== "gerencia").map((s) => s.deal)).size,
+    gerencia: suma(cerradas.filter((s) => s.role === "gerencia").map((s) => s.net)),
     porRol: {
       productor: suma(cerradas.filter((s) => s.role === "productor").map((s) => s.gross)),
       agente: suma(cerradas.filter((s) => s.role === "agente").map((s) => s.gross)),
       lider: suma(cerradas.filter((s) => s.role === "lider").map((s) => s.gross)),
+      gerencia: 0,
     },
   };
 }
