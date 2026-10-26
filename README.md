@@ -7,8 +7,8 @@ Es un sitio estático. No tiene servidor ni base de datos: se publica en GitHub 
 ## Cómo funciona el acceso
 
 1. `datos/extraer.py` lee la planilla ordenada: la hoja 2026, Personas (quién es quién, % y rol), Categorías, Costos, Precios y las notas de Para revisar. Un nombre nuevo o cambiado en Personas llega solo; lo único que se toca a mano son los usuarios.
-   Antes leía (`datos/planilla.xlsx`, hoja **2026**) y deja `datos/tablero.json`. Busca cada columna por su encabezado, así que reordenar columnas no lo rompe; renombrar un encabezado sí, y avisa cuál falta.
-2. `scripts/cifrar.mjs` arma un paquete por usuario con lo que esa persona puede ver y lo cifra con su contraseña (AES-256-GCM, clave derivada con PBKDF2). El admin ve todo. Cada agente ve solo sus operaciones y su parte, sin los montos de los demás ni los de Brea.
+   La planilla bajada va en `datos/planilla.xlsx` y el resultado queda en `datos/tablero.json`. En la hoja 2026 busca cada columna por su encabezado, así que reordenar columnas no lo rompe; renombrar un encabezado sí, y avisa cuál falta.
+2. `scripts/cifrar.mjs` arma un paquete por usuario con lo que esa persona puede ver y lo cifra con su contraseña (AES-256-GCM, clave derivada con PBKDF2). El admin ve todo; una líder, lo suyo y lo de su equipo; cada agente, solo sus operaciones y su parte. Ni líderes ni agentes ven lo de Brea, la gerencia ni los costos.
 3. La página publicada lleva solo `apps/web/src/datos/paquetes.json`, que está cifrado. Sin la contraseña no se puede leer, aunque el repo sea público.
 
 `datos/` (la planilla procesada y `usuarios.json` con las contraseñas) **nunca se sube al repo**: lo excluye `.gitignore`. Guardá `datos/usuarios.json` en un lugar seguro.
