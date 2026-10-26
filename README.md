@@ -13,30 +13,26 @@ Es un sitio estático. No tiene servidor ni base de datos: se publica en GitHub 
 
 `datos/` (la planilla procesada y `usuarios.json` con las contraseñas) **nunca se sube al repo**: lo excluye `.gitignore`. Guardá `datos/usuarios.json` en un lugar seguro.
 
-## Actualizar los datos
+## Actualización automática
 
-```bash
-# En la planilla ordenada: Archivo → Descargar → Microsoft Excel, guardado como datos/planilla.xlsx
-pip install openpyxl
-npm run datos        # extrae (planilla + comisiones) y vuelve a cifrar
-git add apps/web/src/datos/paquetes.json && git commit -m "Datos al <fecha>" && git push
-```
+`.github/workflows/pages.yml` corre cada hora de 8 a 20 (hora argentina), en cada push y a mano desde Actions. Baja la planilla, la extrae, cifra un paquete por usuario y publica.
 
-El push publica solo: `.github/workflows/pages.yml` corre los tests, arma el sitio y lo sube a Pages.
+- **La planilla** la entrega un Apps Script de la propia planilla (`scripts/apps-script/Tablero.gs`), implementado como App web y protegido con una clave. La URL con la clave está en el secreto `PLANILLA_URL`. Sin ese secreto, se publica lo que haya en `apps/web/src/datos/paquetes.json`.
+- **Los usuarios** salen de la pestaña Usuarios de la planilla. La contraseña de cada uno es la "Contraseña nueva" de esa pestaña si está escrita; si no, la del secreto `CONTRASENAS` (un JSON `{"usuario": "contraseña"}`). Un usuario sin contraseña queda afuera y la tarea lo avisa en el log.
+- Si algo falla, el sitio queda como estaba y GitHub avisa por mail a la cuenta dueña del repo.
 
 ## Usuarios y contraseñas
 
-Están en `datos/usuarios.json`:
+Se manejan en la pestaña **Usuarios** de la planilla: usuario, acceso (Ve todo, Líder, Agente), persona, equipo para las líderes y un nombre opcional. Las contraseñas no están en la planilla: solo se escribe una en "Contraseña nueva" para un usuario nuevo o para cambiar la de alguien.
 
-```json
-{ "usuario": "flor", "rol": "agente", "persona": "flor", "contrasena": "…" }
+## Actualizar a mano
+
+```bash
+# En la planilla ordenada: Archivo → Descargar → Microsoft Excel, guardado como datos/planilla.xlsx
+python3 -m venv datos/.venv && datos/.venv/bin/pip install openpyxl
+datos/.venv/bin/python datos/extraer.py datos/planilla.xlsx datos/tablero.json
+node scripts/cifrar.mjs   # con las contraseñas en datos/contrasenas.json
 ```
-
-- **Sumar a alguien:** agregalo con `rol` `admin` (ve todo), `lider` (lo suyo y lo de las personas de `equipo`) o `agente` (lo suyo). `persona` es el nombre de la pestaña Personas en minúsculas y con guiones (`gonza-caba`, `tomas`). `nombre` es opcional y pisa el que se muestra.
-- **Cambiar una contraseña:** editala y corré `node scripts/cifrar.mjs`.
-- **Sacar a alguien:** borralo y volvé a cifrar. Su contraseña deja de abrir el tablero en cuanto se publica.
-
-Con ese archivo borrado, `cifrar.mjs` genera contraseñas nuevas para todos.
 
 ## Desarrollo
 
