@@ -35,9 +35,11 @@ function Lista({ issues, mostrarHoja }: { issues: Issue[]; mostrarHoja?: boolean
 export default function RevisarPage() {
   const { data } = useSesion();
   const g = useMemo(() => {
-    const pendientes = data.issues.filter((i) => !i.note);
+    // Los avisos de forma de la planilla van aparte: no son números que no cierran.
+    const pendientes = data.issues.filter((i) => !i.note && i.kind !== "planilla");
     return {
       pendientes: pendientes.length,
+      planilla: data.issues.filter((i) => i.kind === "planilla"),
       explicados: data.issues.filter((i) => i.note),
       regla: pendientes.filter((i) => i.kind === "regla"),
       copia: pendientes.filter((i) => i.kind === "copia"),
@@ -76,6 +78,12 @@ export default function RevisarPage() {
               </div>
             ))}
           </div>
+        </Seccion>
+      )}
+
+      {g.planilla.length > 0 && (
+        <Seccion titulo="Cómo está cargada la planilla" bajada="Lo que hace que el tablero lea mal una pestaña: encabezados, fechas, nombres que no están en Personas y usuarios.">
+          <Lista issues={g.planilla} />
         </Seccion>
       )}
 

@@ -45,7 +45,7 @@ export default function GeneralPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Brea Propiedades" title="General" lede="Lo cerrado cuenta en su mes de cobro (Mes impacto). Tres Arroyos (Gonza 3A) va aparte." actions={<SelectorDePeriodo />} wide />
+      <PageHeader eyebrow="Brea Propiedades" title="General" lede={`Lo cerrado cuenta en su mes de cobro. Tres Arroyos (Gonza 3A) va aparte. Planilla leída el ${leida(data)}.`} actions={<SelectorDePeriodo />} wide />
 
       <section className="px-5 pt-10 md:px-10 md:pt-12">
         <div className="mx-auto grid max-w-[1320px] gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -178,4 +178,9 @@ export default function GeneralPage() {
       <div className="h-16" />
     </>
   );
+}
+
+function leida(t: { generatedAt: string; updatedAt?: string }) {
+  if (!t.updatedAt) return t.generatedAt.split("-").reverse().join("/");
+  return new Date(t.updatedAt).toLocaleString("es-AR", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
 }

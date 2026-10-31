@@ -79,7 +79,7 @@ export interface Share {
 }
 
 export interface Issue {
-  kind: "formula" | "copia" | "fecha" | "moneda" | "regla";
+  kind: "formula" | "copia" | "fecha" | "moneda" | "regla" | "planilla";
   row: number;
   property: string;
   detail: string;
@@ -91,6 +91,8 @@ export interface Issue {
 
 export interface Tablero {
   generatedAt: string;
+  // Fecha y hora (Argentina) en que se leyó la planilla.
+  updatedAt?: string;
   source: string;
   people: Person[];
   categories?: Category[];

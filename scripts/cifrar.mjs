@@ -14,6 +14,9 @@ const ITERACIONES = 310_000;
 const raiz = fileURLToPath(new URL("..", import.meta.url));
 const leer = (ruta) => JSON.parse(readFileSync(`${raiz}${ruta}`, "utf8"));
 const tablero = leer("datos/tablero.json");
+// Lo que conviene que el admin vea en Revisar sobre los accesos. Nunca lleva contraseñas.
+const avisos = [];
+const avisar = (usuario, detail) => avisos.push({ kind: "planilla", row: 0, property: `Usuarios · ${usuario}`, detail });
 
 function usuarios() {
   if (!existsSync(`${raiz}datos/accesos.json`)) return leer("datos/usuarios.json");
@@ -27,8 +30,14 @@ function usuarios() {
     // Sin contraseña no se inventa una: quedaría afuera sin saberlo. Se avisa y se sigue con el resto.
     if (!contrasena) {
       console.warn(`Sin contraseña, no entra: ${a.usuario}`);
+      avisar(a.usuario, "No tiene contraseña: no puede entrar al tablero. Escribile una en «Contraseña nueva».");
       return [];
     }
+    // Si se borra la celda vuelve a valer la del secreto CONTRASENAS (o ninguna, si es nuevo).
+    if (a.contrasenaNueva && a.contrasenaNueva !== guardadas[a.usuario])
+      avisar(a.usuario, "Entra con la «Contraseña nueva» de la planilla. No la borres hasta pasarla al secreto CONTRASENAS: si no, vuelve a valer la anterior.");
+    if (contrasena.length < 12)
+      avisar(a.usuario, "Su contraseña tiene menos de 12 caracteres. Los paquetes cifrados son públicos: conviene una más larga, por ejemplo cuatro palabras.");
     return [{ usuario: a.usuario, rol: a.rol, persona: a.persona, equipo: a.equipo, nombre: a.nombre ?? undefined, contrasena }];
   });
 }
@@ -53,7 +62,7 @@ function vistaDe(personas) {
 
 export const claveDeUsuario = (u) => createHash("sha256").update(`brea:${u.trim().toLowerCase()}`).digest("hex");
 
-const lista = usuarios();
+const lista = usuarios().filter((u, i, todos) => todos.findIndex((o) => o.usuario === u.usuario) === i);
 if (!lista.length) {
   console.error("No hay ningún usuario con contraseña: no se publica, así nadie queda afuera.");
   process.exit(1);
@@ -63,7 +72,7 @@ const paquetes = lista.map((u) => {
   const persona = tablero.people.find((p) => p.id === u.persona);
   const contenido = {
     user: { name: u.nombre ?? persona?.name ?? u.usuario, role: u.rol, person: u.persona, team: u.equipo ?? [] },
-    data: u.rol === "admin" ? tablero : vistaDe([u.persona, ...(u.equipo ?? [])]),
+    data: u.rol === "admin" ? { ...tablero, issues: [...tablero.issues, ...avisos] } : vistaDe([u.persona, ...(u.equipo ?? [])]),
   };
   const sal = randomBytes(16);
   const iv = randomBytes(12);

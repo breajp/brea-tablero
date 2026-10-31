@@ -4,8 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # GitHub corre el cron cuando puede: en octubre largó 3 de las 13 corridas por día, hasta 3 h tarde,
+  # y lo apaga solo a los 60 días sin commits porque el repo es público. Lo confiable es el disparador
+  # de scripts/apps-script/Disparador.gs (workflow_dispatch cuando cambia la planilla); el cron queda de respaldo.
   schedule:
-    # Cada hora de 8 a 20 en Argentina (11 a 23 UTC).
     - cron: "17 11-23 * * *"
 
 permissions:
@@ -20,6 +22,7 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -32,8 +35,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci --ignore-scripts
-      # Los tests corren antes de bajar la planilla: los que comparan contra los números reales
-      # se saltean, porque esos números cambian cada vez que el equipo carga algo.
       - run: npm run test
 
       # Sin PLANILLA_URL se publica lo que ya está en el repo (apps/web/src/datos/paquetes.json).
@@ -44,7 +45,7 @@ jobs:
       - if: env.PLANILLA_URL != ''
         name: Bajar la planilla
         run: |
-          pip install --quiet openpyxl
+          pip install --quiet openpyxl==3.1.5
           mkdir -p datos
           curl --silent --fail --location "$PLANILLA_URL" --output datos/planilla.b64
           base64 --decode datos/planilla.b64 > datos/planilla.xlsx
