@@ -4,9 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # GitHub corre el cron cuando puede: en octubre largó 3 de las 13 corridas por día, hasta 3 h tarde,
-  # y lo apaga solo a los 60 días sin commits porque el repo es público. Lo confiable es el disparador
-  # de scripts/apps-script/Disparador.gs (workflow_dispatch cuando cambia la planilla); el cron queda de respaldo.
+  # Lo dispara vigilante.yml cuando cambia la planilla. El cron queda de respaldo: GitHub lo corre
+  # cuando puede (en octubre, 3 de las 13 corridas por día).
   schedule:
     - cron: "17 11-23 * * *"
 
@@ -50,6 +49,7 @@ jobs:
           curl --silent --fail --location "$PLANILLA_URL" --output datos/planilla.b64
           base64 --decode datos/planilla.b64 > datos/planilla.xlsx
           python datos/extraer.py datos/planilla.xlsx datos/tablero.json
+          python scripts/huella.py datos/tablero.json datos/accesos.json > datos/version.txt
       - if: env.PLANILLA_URL != ''
         name: Cifrar un paquete por usuario
         env:
@@ -57,6 +57,9 @@ jobs:
         run: node scripts/cifrar.mjs
 
       - run: npm run build
+      # La huella de lo publicado: el vigilante la compara con la planilla para saber si hay algo nuevo.
+      - if: env.PLANILLA_URL != ''
+        run: cp datos/version.txt apps/web/dist/version.txt
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

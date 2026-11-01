@@ -1,0 +1,72 @@
+name: Vigilar la planilla
+
+# Publica a los 10 minutos de cada cambio de la planilla, sin tokens ni servicios de afuera.
+# El cron de GitHub no alcanza: largó 3 de 13 corridas por día. Así que una corrida se queda mirando
+# la planilla cada 10 minutos y, antes de las 6 h que permite GitHub, lanza su relevo: el GITHUB_TOKEN
+# puede disparar workflow_dispatch. El cron de cada hora solo reengancha la cadena si se cortó.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      relevo:
+        description: "La lanzó la corrida anterior"
+        default: "no"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      PLANILLA_URL: ${{ secrets.PLANILLA_URL }}
+      GH_TOKEN: ${{ github.token }}
+      SITIO: https://breajp.github.io/brea-tablero
+    steps:
+      - name: Una sola corrida a la vez
+        id: turno
+        run: |
+          otras() { gh run list -R "$GITHUB_REPOSITORY" --workflow vigilante.yml --status in_progress --json databaseId -q ".[] | select(.databaseId != $GITHUB_RUN_ID) | .databaseId"; }
+          # El relevo espera a que la anterior termine; una corrida del cron se va si ya hay una mirando.
+          intentos=$([ "${{ inputs.relevo }}" = "si" ] && echo 30 || echo 1)
+          for i in $(seq "$intentos"); do
+            [ -z "$(otras)" ] && { echo "sigue=si" >> "$GITHUB_OUTPUT"; exit 0; }
+            sleep 10
+          done
+          echo "Ya hay otra corrida mirando la planilla."
+          echo "sigue=no" >> "$GITHUB_OUTPUT"
+
+      - if: steps.turno.outputs.sigue == 'si'
+        uses: actions/checkout@v4
+      - if: steps.turno.outputs.sigue == 'si'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - if: steps.turno.outputs.sigue == 'si'
+        name: Mirar la planilla cada 10 minutos
+        run: |
+          pip install --quiet openpyxl==3.1.5
+          # En un repo público GitHub apaga los workflows tras 60 días sin actividad: rehabilitarlos lo evita.
+          for w in vigilante.yml pages.yml; do gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/$w/enable" || true; done
+          mkdir -p /tmp/p
+          fin=$((SECONDS + 5 * 3600 + 30 * 60))
+          while [ "$SECONDS" -lt "$fin" ]; do
+            if curl --silent --fail --location "$PLANILLA_URL" --output /tmp/p/planilla.b64 \
+               && base64 --decode /tmp/p/planilla.b64 > /tmp/p/planilla.xlsx \
+               && python datos/extraer.py /tmp/p/planilla.xlsx /tmp/p/tablero.json > /dev/null; then
+              nueva=$(python scripts/huella.py /tmp/p/tablero.json /tmp/p/accesos.json)
+              publicada=$(curl --silent --fail "$SITIO/version.txt?t=$(date +%s)" || echo "ninguna")
+              publicando=$(gh run list -R "$GITHUB_REPOSITORY" --workflow pages.yml --json status -q '[.[] | select(.status != "completed")] | length')
+              if [ "$nueva" != "$publicada" ] && [ "$publicando" = "0" ]; then
+                echo "$(TZ=America/Argentina/Buenos_Aires date '+%d/%m %H:%M') la planilla cambió: publico."
+                gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref main
+              fi
+            else
+              echo "$(TZ=America/Argentina/Buenos_Aires date '+%d/%m %H:%M') no pude leer la planilla; pruebo en 10 minutos."
+            fi
+            sleep 600
+          done
+          gh workflow run vigilante.yml -R "$GITHUB_REPOSITORY" --ref main -f relevo=si
