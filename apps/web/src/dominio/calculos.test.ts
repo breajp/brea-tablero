@@ -15,7 +15,7 @@ describe.runIf(existsSync(ruta))("con la planilla real", () => {
 
   it("el reparto suma exactamente el bruto", () => {
     for (const r of [resumen(t, anio), resumen(deBuenosAires(t), anio)]) {
-      expect(Math.round(r.productores + r.agentes + r.lideres + r.gerencia + r.brea)).toBe(Math.round(r.bruto));
+      expect(Math.round(r.productores + r.agentes + r.lideres + r.terceros + r.gerencia + r.brea)).toBe(Math.round(r.bruto));
     }
   });
 });

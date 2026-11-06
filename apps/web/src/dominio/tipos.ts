@@ -55,6 +55,15 @@ export interface Deal {
   negotiationPct: number | null;
   daysListed: number | null;
   potential: number | null;
+  // Una operación de a tres: alguien del equipo que cobra como un agente más, o un Externo que se
+  // lleva todo su bruto. Su bruto y neto son privados como el resto del reparto.
+  third?: string | null;
+  thirdRate?: number | null;
+  thirdGross?: number | null;
+  thirdNet?: number | null;
+  // Lo que el equipo marca OK, Pendiente o No aplica en la planilla (Autorización, DNI, UIF…).
+  checklist?: { item: string; status: string }[];
+  signing?: { kind: string | null; at: string | null; place: string | null; notary: string | null };
   gross?: number | null;
   producerGross?: number | null;
   agentGross?: number | null;
@@ -95,6 +104,8 @@ export interface Tablero {
   updatedAt?: string;
   source: string;
   people: Person[];
+  // El nombre de quien comparte una operación con un agente o una líder sin ser de su equipo.
+  names?: Record<string, string>;
   categories?: Category[];
   deals: Deal[];
   shares: Share[];

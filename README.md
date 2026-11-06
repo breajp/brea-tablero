@@ -61,8 +61,10 @@ Confirmadas con Gonzalo el 22/10/2026:
   Quien llega a la meta del año (y cumple el tiempo en la categoría) pasa a la siguiente. Los acuerdos individuales y la tabla viven en la pestaña Categorías de la planilla ordenada.
 - Líder = 65 % menos el % del productor, sobre el bruto productor: la oficina se queda siempre el 35 % (confirmado el 23/10). Gerencia = 45 % de (oficina − líder), salvo cuando la producción es de Cecilia, que es la gerente.
 - Brea = oficina − líder − gerencia.
-- **La producción de un agente es el bruto** que generó como productor, agente y líder. El neto se muestra aparte.
-- Lo cerrado cuenta en el **mes de cobro** (columna Mes de cobro de la hoja 2026: el Mes Impacto o, si falta, la fecha de conformación): hasta que no se firma no se imputa nada. El tablero lee esa misma columna.
+- **La producción de un agente es el bruto** que generó como productor y agente. Lo que cobra como líder o gerente es plata cobrada, no producción: suma solo al neto (pedido de Juana, 04/11). En Producción se ve bruto por rol y neto por rol.
+- **Operación de a tres:** en la hoja 2026 se elige Tercero y su Acuerdo Tercero (parte del bruto general), que sale de la parte del productor. Alguien del equipo cobra como un agente más; un Externo se lleva todo su bruto y no le deja nada a la oficina, al líder ni a la gerencia. Bruto Tercero y $ Tercero se calculan solos.
+- Lo cerrado cuenta en el **mes de cobro** (columna Mes de cobro de la hoja 2026: el mes de la Fecha y Hora de firma o, si falta, el Mes Impacto). La conformación no cuenta: es cuando el dueño acepta la oferta y no mueve plata. Una reserva sin fecha de firma no tiene mes. El tablero lee esa misma columna.
+- El detalle de cada operación muestra la firma (qué, cuándo, dónde, escribanía) y el seguimiento que el equipo marca OK, Pendiente o No aplica (Autorización, Tit.Propiedad, DNI Cliente, Dominio, DNI P.C, UIF, Facturación), así cada agente ve lo que le falta.
 - **Todo en dólares.** Un alquiler en pesos se pasa al cambio del día de firma del contrato.
 - **Tres Arroyos (Gonza 3A) es una unidad aparte**, de Gonza y sin gerencia: no entra en los números de la inmobiliaria.
 - **Ya no hay bolsas**: una operación compartida se cobra como colega. Las dos bolsas de 2026 quedan como historia.

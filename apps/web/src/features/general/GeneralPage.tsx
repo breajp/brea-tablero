@@ -94,7 +94,8 @@ export default function GeneralPage() {
               porciones={[
                 { clave: "productores", etiqueta: "Productores", valor: r.productores, ayuda: "% de cada uno sobre su bruto" },
                 { clave: "agentes", etiqueta: "Agentes", valor: r.agentes, ayuda: "en operaciones compartidas" },
-                { clave: "lideres", etiqueta: "Líderes", valor: r.lideres, ayuda: "15 % del bruto del productor" },
+                { clave: "lideres", etiqueta: "Líderes", valor: r.lideres, ayuda: "65 % menos el % del productor" },
+                ...(r.terceros ? [{ clave: "terceros", etiqueta: "Terceros", valor: r.terceros, ayuda: "en operaciones de a tres" }] : []),
                 { clave: "gerencia", etiqueta: "Gerencia", valor: r.gerencia, ayuda: "45 % de lo que queda" },
                 { clave: "brea", etiqueta: "Brea", valor: r.brea, destacada: true },
               ]}
@@ -159,7 +160,7 @@ export default function GeneralPage() {
 
       <Seccion
         titulo="Producción del equipo"
-        bajada={`Producción bruta de cada persona en ${nombre(periodo)}, sumando lo que hizo como productor, agente y líder.`}
+        bajada={`Producción bruta de cada persona en ${nombre(periodo)}, sumando lo que hizo como productor y agente.`}
         acciones={
           <Button asChild variant="quiet" size="sm">
             <Link to="/agentes">

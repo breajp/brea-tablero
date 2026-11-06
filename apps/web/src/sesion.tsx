@@ -71,5 +71,5 @@ export function useSesion(): Sesion {
 
 export function useNombreDe() {
   const { data } = useSesion();
-  return useCallback((id: string | null) => (id ? (data.people.find((p) => p.id === id)?.name ?? id) : "—"), [data]);
+  return useCallback((id: string | null) => (id ? (data.people.find((p) => p.id === id)?.name ?? data.names?.[id] ?? id) : "—"), [data]);
 }

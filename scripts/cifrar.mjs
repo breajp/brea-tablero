@@ -42,16 +42,19 @@ function usuarios() {
   });
 }
 
-const PRIVADOS = ["gross", "producerGross", "agentGross", "producerNet", "agentNet", "office", "leaderNet", "management", "brea", "producerLabel"];
+const PRIVADOS = ["gross", "producerGross", "agentGross", "producerNet", "agentNet", "office", "leaderNet", "management", "brea", "producerLabel", "thirdGross", "thirdNet"];
 
 // Un agente ve lo suyo; una líder, lo suyo y lo de su equipo. Ninguno ve lo que se lleva Brea,
 // la gerencia, los costos ni lo que hay para revisar.
 function vistaDe(personas) {
-  const suyas = tablero.deals.filter((d) => [d.producer, d.agent, d.leader].some((p) => personas.includes(p)));
+  const suyas = tablero.deals.filter((d) => [d.producer, d.agent, d.leader, d.third].some((p) => personas.includes(p)));
   const propiedades = new Set(suyas.map((d) => d.property));
+  // Solo el nombre de quien comparte una operación con ellos: sin esto el detalle muestra "gonza-caba".
+  const conQuien = new Set(suyas.flatMap((d) => [d.producer, d.agent, d.leader, d.third]));
   return {
     ...tablero,
     people: tablero.people.filter((p) => personas.includes(p.id)),
+    names: Object.fromEntries(tablero.people.filter((p) => conQuien.has(p.id)).map((p) => [p.id, p.name])),
     deals: suyas.map((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !PRIVADOS.includes(k)))),
     shares: tablero.shares.filter((s) => personas.includes(s.person)),
     priceChanges: (tablero.priceChanges ?? []).filter((c) => propiedades.has(c.property)),

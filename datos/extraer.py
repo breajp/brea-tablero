@@ -44,6 +44,14 @@ ENCABEZADOS = {
     "productor_neto": "$ Productor", "agente_neto": "$ Agente", "oficina": "OFICINA", "lider_neto": "$ Lider",
     "gerencia": "Gerencia", "brea": "Brea", "firma": "Fecha y Hora",
 }
+# Columnas que una planilla más vieja puede no tener: sin ellas el tablero sigue andando, sin ese dato.
+OPCIONALES = {
+    "cobro": "Mes de cobro", "tercero": "Tercero", "acuerdo_tercero": "Acuerdo Tercero",
+    "bruto_tercero": "Bruto Tercero", "tercero_neto": "$ Tercero",
+    "tipo_firma": "Firma", "lugar_firma": "Lugar", "escribania": "Info Escribanía",
+}
+# Lo que el equipo marca OK, Pendiente o No aplica: cada agente ve en el tablero lo que le falta.
+SEGUIMIENTO = ["Autorización", "Tit.Propiedad", "DNI Cliente", "Dominio", "DNI P.C", "UIF", "Facturación"]
 
 
 def sin_tildes(texto):
@@ -288,11 +296,11 @@ def main(ruta, salida, ruta_categorias=None):
     if faltan:
         raise SystemExit(f"La hoja 2026 no tiene estas columnas: {faltan}")
     L = {k: letras[h] for k, h in ENCABEZADOS.items()}
-    # "Mes de cobro" (AR) es la columna que usan Participaciones, Producción y Resumen mensual:
+    # "Mes de cobro" es la columna que usan Participaciones, Producción y Resumen mensual:
     # leerla hace que el tablero y la planilla imputen cada operación al mismo mes.
-    if "Mes de cobro" in letras:
-        L["cobro"] = letras["Mes de cobro"]
-    c = lambda r, k: ws.cell(r, col(L.get(k, k))).value
+    L.update({k: letras[h] for k, h in OPCIONALES.items() if h in letras})
+    c = lambda r, k: ws.cell(r, col(L[k])).value if k in L else None
+    seguimiento = [h for h in SEGUIMIENTO if h in letras]
 
     directorio = Directorio(wb)
     tasas, NOMBRES = directorio.tasas, directorio.nombres
@@ -312,11 +320,9 @@ def main(ruta, salida, ruta_categorias=None):
         listado, reserva = dia(c(r, "ingreso")), dia(c(r, "reserva"))
         publi, cierre = num(c(r, "publi")), num(c(r, "cierre"))
         nego = num(c(r, "nego"))
-        cobro = mes(c(r, "cobro")) if "cobro" in L else (mes(c(r, "impacto")) or mes(c(r, "conformacion")))
-        if not cobro and estado not in "DEF":
-            # Lo cerrado va solo por Mes de cobro, como en Producción. Lo que no se cobró (en curso,
-            # pausada, baja) se sigue ubicando en el mes de la reserva o la baja, como hasta ahora.
-            cobro = mes(c(r, "reserva"))
+        # Se cobra cuando se firma (pedido de Juana, 04/11): la conformación es cuando el dueño acepta
+        # la oferta y no mueve plata. Una reserva sin fecha de firma todavía no tiene mes.
+        cobro = mes(c(r, "cobro")) if "cobro" in L else (mes(c(r, "firma")) or mes(c(r, "impacto")))
         nota = str(c(r, "data")).strip() if c(r, "data") else None
         if str(c(r, "productor") or "").strip().lower() == "gonza 3a":
             tres_arroyos.add(r)
@@ -346,6 +352,12 @@ def main(ruta, salida, ruta_categorias=None):
             "producerNet": num(c(r, "productor_neto")), "agentNet": num(c(r, "agente_neto")), "office": num(c(r, "oficina")),
             "leaderNet": num(c(r, "lider_neto")), "management": num(c(r, "gerencia")), "brea": num(c(r, "brea")),
             "potential": round(publi * c(r, "vendedor"), 2) if publi and isinstance(c(r, "vendedor"), (int, float)) and c(r, "vendedor") > 0 else None,
+            "third": directorio.persona(c(r, "tercero"), directorio.persona(c(r, "productor"))), "thirdRate": pct(c(r, "acuerdo_tercero")),
+            "thirdGross": num(c(r, "bruto_tercero")), "thirdNet": num(c(r, "tercero_neto")),
+            "checklist": [{"item": h, "status": str(ws.cell(r, col(letras[h])).value).strip()} for h in seguimiento
+                          if str(ws.cell(r, col(letras[h])).value or "").strip()],
+            "signing": {"kind": c(r, "tipo_firma"), "at": c(r, "firma").isoformat(timespec="minutes") if isinstance(c(r, "firma"), datetime) else None,
+                        "place": c(r, "lugar_firma"), "notary": c(r, "escribania")},
         }
         operaciones.append(op)
 
@@ -353,7 +365,10 @@ def main(ruta, salida, ruta_categorias=None):
             for rol, quien, bruto, neto in (
                 ("productor", op["producer"], op["producerGross"], op["producerNet"]),
                 ("agente", op["agent"], op["agentGross"], op["agentNet"]),
-                ("lider", op["leader"], op["leaderNet"], op["leaderNet"]),
+                # Lo del líder es plata cobrada, no producción (Juana, 04/11): va al neto con bruto 0.
+                ("lider", op["leader"], 0, op["leaderNet"]),
+                # El tercero de una operación de a tres cobra como un agente más; si es Externo, se lleva todo su bruto.
+                ("agente", op["third"], op["thirdGross"], op["thirdNet"]),
                 # La gerencia no es producción (bruto 0), pero es plata que cobra quien tiene rol Gerente.
                 ("gerencia", gerente, 0, op["management"]),
             ):
@@ -370,6 +385,9 @@ def main(ruta, salida, ruta_categorias=None):
         if estado in "DEF" and not cobro:
             revisar.append({"kind": "fecha", "row": r, "property": prop,
                             "detail": f"Figura como {ESTADOS[estado][1].lower()} pero no tiene fechas ni Mes Impacto: no suma en ningún mes."})
+        if op["third"] and not op["thirdRate"] and estado in "BCDEF":
+            revisar.append({"kind": "regla", "row": r, "property": prop,
+                            "detail": f"Tiene a {c(r, 'tercero')} como tercero pero no tiene Acuerdo Tercero: no se le reparte nada."})
         if nego is not None and abs(nego) > 50:
             revisar.append({"kind": "moneda", "row": r, "property": prop,
                             "detail": f"Publicada a {plata(publi)} y cerrada a {plata(cierre)}: parece mezclar pesos y dólares (da {nego:.1f} % de negociación). Va todo en dólares: el alquiler, al cambio del día de firma del contrato.".replace(f"{nego:.1f}", f"{nego:.1f}".replace(".", ","))})

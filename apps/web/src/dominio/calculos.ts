@@ -28,6 +28,7 @@ export interface Resumen {
   productores: number;
   agentes: number;
   lideres: number;
+  terceros: number;
   gerencia: number;
   brea: number;
   enCursoBruto: number;
@@ -52,6 +53,7 @@ export function resumen(t: Tablero, p: Periodo): Resumen {
     agentes,
     lideres,
     equipo: productores + agentes + lideres,
+    terceros: suma(cerradas.map((d) => d.thirdNet)),
     gerencia: suma(cerradas.map((d) => d.management)),
     brea: suma(cerradas.map((d) => d.brea)),
     enCursoBruto: suma(enCurso.map((d) => d.gross)),
@@ -176,7 +178,9 @@ export interface Produccion {
   gerencia: number;
   operaciones: number;
   // La producción de un agente es el bruto que generó (definido con Gonzalo): por rol va en bruto.
+  // Lo del líder y la gerencia es plata cobrada, no producción: solo aparece en el neto por rol.
   porRol: Record<Role, number>;
+  netoPorRol: Record<Role, number>;
 }
 
 export function produccion(shares: Share[], person: string, p: Periodo | null): Produccion {
@@ -194,8 +198,14 @@ export function produccion(shares: Share[], person: string, p: Periodo | null): 
     porRol: {
       productor: suma(cerradas.filter((s) => s.role === "productor").map((s) => s.gross)),
       agente: suma(cerradas.filter((s) => s.role === "agente").map((s) => s.gross)),
-      lider: suma(cerradas.filter((s) => s.role === "lider").map((s) => s.gross)),
+      lider: 0,
       gerencia: 0,
+    },
+    netoPorRol: {
+      productor: suma(cerradas.filter((s) => s.role === "productor").map((s) => s.net)),
+      agente: suma(cerradas.filter((s) => s.role === "agente").map((s) => s.net)),
+      lider: suma(cerradas.filter((s) => s.role === "lider").map((s) => s.net)),
+      gerencia: suma(cerradas.filter((s) => s.role === "gerencia").map((s) => s.net)),
     },
   };
 }

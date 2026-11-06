@@ -9,6 +9,7 @@ import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { CERRADAS, EN_CARTERA, EN_CURSO, ESTADO, ROL, type Deal } from "@/dominio/tipos";
 import { fecha, mesLargo, porcentaje, tasa, usd, dias } from "@/lib/formato";
+import { plural } from "@/lib/plural";
 import { useNombreDe, useSesion } from "@/sesion";
 
 type Filtro = "en-curso" | "cerradas" | "cartera" | "bajas" | "todas";
@@ -22,6 +23,21 @@ const FILTROS: Record<Filtro, (d: Deal) => boolean> = {
 };
 
 const sinTildes = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+// En la planilla conviven "OK", "Subido" y "Completada" para lo mismo, y "Falta" o "Solicitado" para lo que sigue pendiente.
+function tonoDeSeguimiento(estado: string): "pass" | "muted" | "warn" {
+  if (/^(ok|subid|complet)/i.test(estado)) return "pass";
+  if (/^no aplica/i.test(estado)) return "muted";
+  return "warn";
+}
+
+const pendientes = (d: Deal) => (d.checklist ?? []).filter((c) => tonoDeSeguimiento(c.status) === "warn").length;
+
+function fechaYHora(cuando: string | null): string {
+  if (!cuando) return "—";
+  const hora = cuando.slice(11, 16);
+  return hora && hora !== "00:00" ? `${fecha(cuando.slice(0, 10))} · ${hora} h` : fecha(cuando.slice(0, 10));
+}
 
 export default function OperacionesPage() {
   const { data, esAdmin, user } = useSesion();
@@ -83,6 +99,7 @@ export default function OperacionesPage() {
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-ink-3">
                       <Chip tone={ESTADO[d.status].tone}>{ESTADO[d.status].label}</Chip>
                       <span>{[d.kind, d.typology].filter(Boolean).join(" · ") || "Sin tipo cargado"}</span>
+                      {d.status !== "baja" && pendientes(d) > 0 && <Chip tone="warn">{plural(pendientes(d), "pendiente")}</Chip>}
                     </div>
                   </div>
                   <div className="hidden min-w-0 text-meta text-ink-2 md:block">
@@ -143,17 +160,52 @@ function Detalle({ deal: d, onCerrar }: { deal: Deal; onCerrar: () => void }) {
           <Dato etiqueta="Honorario vendedor">{tasa(d.sellerFee)}</Dato>
           <Dato etiqueta="Honorario comprador">{tasa(d.buyerFee)}</Dato>
           <Dato etiqueta="Acuerdo interno">{tasa(d.internalSplit)}</Dato>
-          <Dato etiqueta="Mes de cobro">{mesLargo(d.billingMonth)}</Dato>
+          <Dato etiqueta="Mes de cobro">{d.billingMonth ? mesLargo(d.billingMonth) : "Sin fecha de firma"}</Dato>
         </div>
 
         <div className="flex flex-wrap gap-2 text-meta">
           <Chip tone="muted">Productor {nombreDe(d.producer)}</Chip>
           <Chip tone="muted">Agente {nombreDe(d.agent)}</Chip>
           {d.leader && <Chip tone="muted">Líder {nombreDe(d.leader)}</Chip>}
+          {d.third && (
+            <Chip tone="muted">
+              Tercero {nombreDe(d.third)}
+              {d.thirdRate ? ` · ${tasa(d.thirdRate)}` : ""}
+            </Chip>
+          )}
           {enBolsa && <Chip tone="warn">En bolsa: la otra mitad está en otra fila</Chip>}
         </div>
 
         {d.notes && <p className="rounded-control bg-paper-sunken px-4 py-3 text-base text-ink-2">{d.notes}</p>}
+
+        {d.signing && (d.signing.kind || d.signing.at || d.signing.place || d.signing.notary) && (
+          <div>
+            <h3 className="mb-3 font-display text-h3 font-semibold text-ink">Firma</h3>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+              <Dato etiqueta="Qué se firma">{d.signing.kind ?? "—"}</Dato>
+              <Dato etiqueta="Fecha y hora">{fechaYHora(d.signing.at)}</Dato>
+              <Dato etiqueta="Lugar">{d.signing.place ?? "—"}</Dato>
+              <Dato etiqueta="Escribanía">{d.signing.notary ?? "—"}</Dato>
+            </div>
+          </div>
+        )}
+
+        {d.checklist && d.checklist.length > 0 && (
+          <div>
+            <h3 className="mb-2 font-display text-h3 font-semibold text-ink">Seguimiento</h3>
+            <p className="mb-2 text-meta text-ink-3">{pendientes(d) ? `${plural(pendientes(d), "dato pendiente", "datos pendientes")}.` : "No falta nada."}</p>
+            <ul className="grid gap-x-6 sm:grid-cols-2">
+              {d.checklist.map((c) => (
+                <li key={c.item} className="flex items-center justify-between gap-3 rounded-control px-3 py-2.5 text-base hover:bg-paper-sunken/60">
+                  <span className="min-w-0 truncate text-ink-2">{c.item}</span>
+                  <Chip tone={tonoDeSeguimiento(c.status)} className="text-meta">
+                    {c.status}
+                  </Chip>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {esAdmin && d.gross ? (
           <div>
@@ -164,6 +216,7 @@ function Detalle({ deal: d, onCerrar }: { deal: Deal; onCerrar: () => void }) {
                 { clave: "p", etiqueta: `Productor · ${d.producerLabel ?? nombreDe(d.producer)}`, valor: d.producerNet ?? 0, ayuda: d.producerNet ? undefined : "0 %: su parte queda en la oficina" },
                 ...(d.agentNet ? [{ clave: "a", etiqueta: `Agente · ${nombreDe(d.agent)}`, valor: d.agentNet }] : []),
                 ...(d.leader ? [{ clave: "l", etiqueta: `Líder · ${nombreDe(d.leader)}`, valor: d.leaderNet ?? 0 }] : []),
+                ...(d.third ? [{ clave: "t", etiqueta: `Tercero · ${nombreDe(d.third)}`, valor: d.thirdNet ?? 0, ayuda: d.thirdRate ? `${tasa(d.thirdRate)} del bruto` : "falta el Acuerdo Tercero" }] : []),
                 { clave: "g", etiqueta: "Gerencia", valor: d.management ?? 0, ayuda: d.management ? undefined : "sin gerencia en esta operación" },
                 { clave: "b", etiqueta: "Brea", valor: d.brea ?? 0, destacada: true },
               ]}
@@ -174,7 +227,7 @@ function Detalle({ deal: d, onCerrar }: { deal: Deal; onCerrar: () => void }) {
             <h3 className="mb-2 font-display text-h3 font-semibold text-ink">Tu parte</h3>
             <ul className="space-y-1">
               {partes.map((s) => (
-                <li key={s.role} className="flex items-center justify-between rounded-control px-3 py-2.5 text-base hover:bg-paper-sunken/60">
+                <li key={s.role + s.gross} className="flex items-center justify-between rounded-control px-3 py-2.5 text-base hover:bg-paper-sunken/60">
                   <span className="text-ink-2">
                     Como {ROL[s.role].toLowerCase()} · bruto {usd(s.gross)}
                   </span>

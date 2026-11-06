@@ -31,7 +31,7 @@ export default function AgentesPage() {
       <PageHeader
         eyebrow={esAdmin ? "Equipo" : "Tu equipo"}
         title={esAdmin ? "Agentes" : "Equipo"}
-        lede="La producción de cada persona es el bruto que generó como productor, agente y líder. Entrá a una para ver su tablero tal como lo ve ella."
+        lede="La producción de cada persona es el bruto que generó como productor y agente. Entrá a una para ver su tablero tal como lo ve ella."
         actions={<SelectorDePeriodo />}
         wide
       />
@@ -71,7 +71,7 @@ export default function AgentesPage() {
                   <td className="px-3 py-3 text-right">{usd(f.netoCerrado)}</td>
                   <td className="px-3 py-3 text-right">{f.porRol.productor ? usd(f.porRol.productor) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.porRol.agente ? usd(f.porRol.agente) : "—"}</td>
-                  <td className="px-3 py-3 text-right">{f.porRol.lider ? usd(f.porRol.lider) : "—"}</td>
+                  <td className="px-3 py-3 text-right">{f.netoPorRol.lider ? usd(f.netoPorRol.lider) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.gerencia ? usd(f.gerencia) : "—"}</td>
                   <td className="px-3 py-3 text-right">{f.brutoEnCurso ? usd(f.brutoEnCurso) : "—"}</td>
                   <td className="px-3 py-3 text-right">{numero(f.operaciones)}</td>
@@ -86,7 +86,7 @@ export default function AgentesPage() {
         </div>
         {esAdmin && (
           <p className="mt-3 max-w-[80ch] text-meta text-ink-3">
-            Gonza 3A es Tres Arroyos, una unidad aparte sin gerencia. Gonza CABA tiene 0 % de productor: su neto queda en la oficina. Como gerente es neto y no suma a la producción.
+            Gonza 3A es Tres Arroyos, una unidad aparte sin gerencia. Gonza CABA tiene 0 % de productor: su neto queda en la oficina. Como líder y como gerente es neto: no suma a la producción.
           </p>
         )}
       </Seccion>

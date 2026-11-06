@@ -67,7 +67,7 @@ export default function ProduccionPage() {
         className={veOtros ? "pt-5 md:pt-6" : undefined}
         eyebrow={propia ? `Hola, ${quien.name}` : "Producción individual"}
         title={propia ? "Tu producción" : quien.name}
-        lede={`La producción es el bruto que ${propia ? "generaste" : "generó"} como productor, agente y líder, en el mes de cobro. Abajo, lo que ${propia ? "cobraste" : "cobró"} en mano.`}
+        lede={`La producción es el bruto que ${propia ? "generaste" : "generó"} como productor y agente, en el mes de cobro. Lo que ${propia ? "cobrás" : "cobra"} como líder no es producción: suma solo al neto.`}
         actions={<SelectorDePeriodo />}
         wide
       />
@@ -87,18 +87,34 @@ export default function ProduccionPage() {
         <Seccion titulo={`Producción bruta por mes · ${periodo.anio}`} className="lg:pr-5">
           <BarrasPorMes meses={participacionesPorMes(data.shares.filter((s) => s.person === persona), periodo.anio)} enPeriodo={(m) => contieneMes(periodo, m)} etiqueta="Producción bruta" />
         </Seccion>
-        <Seccion titulo="Por rol" bajada={`En ${nombre(periodo)}.`} className="lg:pl-5">
-          <div className="rounded-panel bg-paper-raised p-2 shadow-card">
-            <Reparto
-              total={p.brutoCerrado}
-              porciones={(["productor", "agente", "lider"] as Role[]).map((rol) => ({
-                clave: rol,
-                etiqueta: `Como ${ROL[rol].toLowerCase()}`,
-                valor: p.porRol[rol],
-              }))}
-            />
-          </div>
-        </Seccion>
+        <div>
+          <Seccion titulo="Bruto por rol" bajada={`La producción de ${nombre(periodo)}.`} className="lg:pl-5">
+            <div className="rounded-panel bg-paper-raised p-2 shadow-card">
+              <Reparto
+                total={p.brutoCerrado}
+                porciones={(["productor", "agente"] as Role[]).map((rol) => ({
+                  clave: rol,
+                  etiqueta: `Como ${ROL[rol].toLowerCase()}`,
+                  valor: p.porRol[rol],
+                }))}
+              />
+            </div>
+          </Seccion>
+          <Seccion titulo="Neto por rol" bajada={`Lo que ${propia ? "cobraste" : "cobró"} en ${nombre(periodo)}.`} className="lg:pl-5">
+            <div className="rounded-panel bg-paper-raised p-2 shadow-card">
+              <Reparto
+                total={p.netoCerrado}
+                porciones={(["productor", "agente", "lider", "gerencia"] as Role[])
+                  .filter((rol) => rol === "productor" || rol === "agente" || p.netoPorRol[rol] > 0)
+                  .map((rol) => ({
+                    clave: rol,
+                    etiqueta: rol === "gerencia" ? "Como gerente" : `Como ${ROL[rol].toLowerCase()}`,
+                    valor: p.netoPorRol[rol],
+                  }))}
+              />
+            </div>
+          </Seccion>
+        </div>
       </div>
 
       <Seccion titulo="Operaciones" bajada="Todas las del año en las que participó: el bruto que generó y, abajo, lo que cobra.">
@@ -111,7 +127,7 @@ export default function ProduccionPage() {
                 <div className="min-w-0">
                   <div className="truncate text-base font-medium text-ink">{o.d.property}</div>
                   <div className="mt-0.5 text-meta text-ink-3">
-                    {o.d.kind ?? "—"} · cobro {mesLargo(o.month)}
+                    {o.d.kind ?? "—"} · {o.month ? `cobro ${mesLargo(o.month)}` : "sin fecha de firma"}
                   </div>
                 </div>
                 <div className="flex flex-wrap justify-end gap-1.5 text-meta md:justify-start">
